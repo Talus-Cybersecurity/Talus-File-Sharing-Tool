@@ -4,6 +4,7 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad
 import os
 import base64
+from Crypto.Util.Padding import unpad
 
 def generate_talus_keys(private_key_path, public_key_path):
     """
@@ -82,3 +83,40 @@ def encrypt(message: str, key: bytes) -> dict:
         "iv": base64.b64encode(iv).decode('utf-8'),
         "ciphertext": base64.b64encode(ciphertext).decode('utf-8')
     }
+
+
+def decrypt(encrypted_payload: dict, key: bytes) -> str:
+    """
+    Decrypts an AES-256-CBC encrypted payload.
+    
+    Args:
+        encrypted_payload: A dict with 'iv' and 'ciphertext' (base64-encoded strings),
+                           as returned by the encrypt() helper.
+        key: The same 32-byte AES-256 key used during encryption.
+    
+    Returns:
+        The decrypted plaintext string.
+    """
+    if len(key) != 32:
+        raise ValueError(f"Key must be 32 bytes for AES-256, got {len(key)}")
+
+    if "iv" not in encrypted_payload or "ciphertext" not in encrypted_payload:
+        raise ValueError("encrypted_payload must contain 'iv' and 'ciphertext' keys")
+
+    iv = base64.b64decode(encrypted_payload["iv"])
+    ciphertext = base64.b64decode(encrypted_payload["ciphertext"])
+
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+    padded_plaintext = cipher.decrypt(ciphertext)
+    plaintext = unpad(padded_plaintext, AES.block_size)
+
+    return plaintext.decode('utf-8')
+
+# Testing Section
+# key = generateSymmetricKey()  # your existing helper
+
+# payload = encrypt("Hello, Talus!", key)
+# # payload -> {"iv": "...", "ciphertext": "..."}
+
+# message = decrypt(payload, key)
+# # message -> "Hello, Talus!"
