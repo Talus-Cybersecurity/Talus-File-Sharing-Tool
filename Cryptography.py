@@ -120,3 +120,30 @@ def decrypt(encrypted_payload: dict, key: bytes) -> str:
 
 # message = decrypt(payload, key)
 # # message -> "Hello, Talus!"
+
+
+from Crypto.Cipher import PKCS1_OAEP
+
+def encrypt_key_with_rsa(symmetric_key: bytes, public_key_path: str) -> bytes:
+    """
+    Encrypts a symmetric key using a recipient's RSA public key.
+    
+    Args:
+        symmetric_key: The raw AES key bytes to encrypt.
+        public_key_path: Path to the recipient's public key PEM file.
+    
+    Returns:
+        The encrypted key as bytes.
+    """
+    try:
+        with open(public_key_path, "rb") as f:
+            public_key = RSA.import_key(f.read())
+
+        cipher_rsa = PKCS1_OAEP.new(public_key)
+        encrypted_key = cipher_rsa.encrypt(symmetric_key)
+
+        return encrypted_key
+
+    except Exception as e:
+        print(f"An error occurred during RSA key encryption: {e}")
+        return None
