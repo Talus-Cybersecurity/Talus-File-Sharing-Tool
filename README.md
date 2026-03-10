@@ -32,6 +32,8 @@ These dependencies can be installed using:
 pip install websockets cryptography
 ```
 
+**Project Description**
+
 Talus is a **secure file sharing platform** that bridges the gap between enterprise-grade security and consumer accessibility.
 
 Traditional file sharing tools rely on **static encryption**, which protects files during transfer but offers limited control over how files are accessed after sharing. Talus enhances this model by implementing the **Principle of Least Privilege** through a dynamic **middle-man server** that enforces sender-defined access conditions before releasing decryption keys.
