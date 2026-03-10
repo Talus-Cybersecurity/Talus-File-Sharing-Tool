@@ -1,16 +1,19 @@
-# Talus-File-Sharing-Tool
+# Talus File Sharing Tool
 
-  
+Talus is a **context-aware, policy-driven file sharing system** designed to bring enterprise-level security to everyday users. By combining modern encryption with dynamic access policies and machine learning–based threat detection, Talus ensures that shared files remain secure, private, and accessible only under approved conditions.
 
-**Group members**
+---
 
-- Adam Secrest - adam.secrest@csu.fullerton.edu
+# Team Members
 
-- Joshua Pavon - jjpavon@csu.fullerton.edu
+| Name | Email |
+|-----|-----|
+| Adam Secrest | adam.secrest@csu.fullerton.edu |
+| Joshua Pavon | jjpavon@csu.fullerton.edu |
+| Michelle Pham | mp28jam@csu.fullerton.edu |
+| Landon Patam | lcpatam@csu.fullerton.edu |
 
-- Michelle Pham - mp28jam@csu.fullerton.edu
-
-- Landon Patam - lcpatam@csu.fullerton.edu
+---
   
 # Dependencies
 
@@ -29,13 +32,94 @@ These dependencies can be installed using:
 pip install websockets cryptography
 ```
 
-**Project Description**
+Talus is a **secure file sharing platform** that bridges the gap between enterprise-grade security and consumer accessibility.
 
-Talus is a context-aware, policy-driven file sharing tool designed to bridge the gap between enterprise-grade security and everyday consumer accessibility. By moving beyond static encryption, Talus implements the Principle of Least Privilege through a dynamic "middle-man" server that enforces sender-defined access criteria—such as IP whitelisting, device certification, and time-of-day restrictions—before releasing decryption keys. The system features a zero-knowledge architecture to ensure end-to-end privacy and integrates a Random Forest machine learning model that analyzes access logs in real-time to detect and block suspicious behavior with a 90% accuracy rate. Built with a lightweight user friendly interface and robust cryptographic standards like AES-256 and RSA-2048, Talus provides a sophisticated yet user-friendly defense against excessive permissions and unauthorized data access.
+Traditional file sharing tools rely on **static encryption**, which protects files during transfer but offers limited control over how files are accessed after sharing. Talus enhances this model by implementing the **Principle of Least Privilege** through a dynamic **middle-man server** that enforces sender-defined access conditions before releasing decryption keys.
 
+These conditions may include:
 
-**Problem Statement**
+- IP address whitelisting
+- Device certification
+- Time-of-day access restrictions
+- User authentication verification
 
-While planning the security features of Talus, we identified some gaps in the current secure file sharing space: many effective solutions remain unavailable to the everyday consumer as they are locked behind steep paywalls, provide minimal access to features with the free version, or are difficult to setup and use. Aspects such as file encryption and temporary decryption in local memory are essential security features for storing personal information cryptographically. This prevents physical memory reading attacks and data integrity in the event where adversaries gain access to a physical desktop. Modern file encryption methods typically autofill or entirely bypass passwords in exchange for a more user-friendly experience; however, it is a design flaw due to lack of security beyond the login. Other, non-password saving file encryptors go too far in the other direction, where standard users cannot set up the file encryption software in an efficient manner.  
+Talus also utilizes a **zero-knowledge architecture**, ensuring that the server never has access to plaintext files or decryption keys.
 
-Another identified issue is Excessive Network Share, in which businesses may grant overly broad access to files, data, and permissions for the convenience of sharing files. Additionally, businesses are unaware of how to set proper limits on the shared files, leaving access open even after the shared data is no longer in use. By creating a file sharing system, users can see warnings and risks of full access sharing through user-friendly interface to determine who can access data and under what circumstances. As a result, Talus can detect when an unauthorized user or system is trying to access shared data and steps in to block it before any compromises.
+To further strengthen security, Talus integrates a **Random Forest machine learning model** that analyzes access logs in real time to detect suspicious behavior. The model currently achieves approximately **90% accuracy** in identifying anomalous access attempts and can automatically block potential threats.
+
+By combining:
+
+- **AES-256 symmetric encryption**
+- **RSA-2048 key exchange**
+- **Machine learning threat detection**
+- **Policy-based access control**
+
+Talus provides a **secure yet user-friendly file sharing experience**.
+
+---
+
+# Problem Statement
+
+While researching secure file sharing platforms, we identified several key gaps in existing solutions.
+
+Many enterprise-grade systems provide strong security but suffer from one or more of the following issues:
+
+- High subscription costs
+- Limited features in free versions
+- Complex configuration processes
+- Poor usability for non-technical users
+
+Basic security practices such as **file encryption and temporary in-memory decryption** are critical for protecting sensitive information. These measures help prevent attacks such as:
+
+- Physical memory reading
+- Unauthorized local access
+- Data persistence after use
+
+However, many modern systems prioritize convenience over security. For example, password managers or operating systems may automatically fill or bypass encryption passwords, creating potential vulnerabilities if a device becomes compromised.
+
+On the other end of the spectrum, some encryption tools require complex manual setup that typical users struggle to configure correctly.
+
+Another common issue is **Excessive Network Share**, where organizations grant overly broad access permissions for the sake of convenience. This often results in:
+
+- Files remaining accessible long after they are needed
+- Sensitive data being visible to unintended users
+- Lack of visibility into who accesses shared data
+
+Talus addresses these challenges by providing **clear policy controls and real-time security monitoring**. Through an intuitive interface, users can define **who can access files and under what conditions**, while the system monitors activity and automatically blocks suspicious access attempts.
+
+---
+
+# Key Features
+
+- Policy-driven secure file sharing
+- End-to-end encryption
+- Zero-knowledge architecture
+- Machine learning anomaly detection
+- Sender-controlled access restrictions
+- User-friendly interface for defining access policies
+
+---
+
+# Technologies Used
+
+- **Encryption:** AES-256, RSA-2048  
+- **Machine Learning:** Random Forest Classifier  
+- **Backend:** Server Certification and RSA Key Exchanges
+- **Frontend:** Client-end UI for Ease of Use
+- **Logging & Monitoring:** Real-time access log analysis  
+
+---
+
+# System Architecture
+
+Talus uses a **secure middle-man architecture** where the server enforces policies but never has access to decrypted data.
+
+Basic flow:
+
+1. Sender encrypts file locally.
+2. File is uploaded to Talus server.
+3. Access policies are attached to the file.
+4. Recipient requests access.
+5. Server verifies policy conditions.
+6. If approved, the decryption key is released.
+7. Machine learning system monitors access patterns for anomalies.
