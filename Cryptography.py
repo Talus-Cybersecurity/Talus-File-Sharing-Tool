@@ -147,3 +147,28 @@ def encrypt_key_with_rsa(symmetric_key: bytes, public_key_path: str) -> bytes:
     except Exception as e:
         print(f"An error occurred during RSA key encryption: {e}")
         return None
+    
+
+def decrypt_key_with_rsa(encrypted_key: bytes, private_key_path: str) -> bytes:
+    """
+    Decrypts an RSA-encrypted symmetric key using a private key.
+    
+    Args:
+        encrypted_key: The encrypted AES key bytes.
+        private_key_path: Path to the recipient's private key PEM file.
+    
+    Returns:
+        The decrypted symmetric key as bytes.
+    """
+    try:
+        with open(private_key_path, "rb") as f:
+            private_key = RSA.import_key(f.read())
+
+        cipher_rsa = PKCS1_OAEP.new(private_key)
+        symmetric_key = cipher_rsa.decrypt(encrypted_key)
+
+        return symmetric_key
+
+    except Exception as e:
+        print(f"An error occurred during RSA key decryption: {e}")
+        return None
