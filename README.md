@@ -29,7 +29,7 @@ Current dependencies:
 These dependencies can be installed using:
 
 ```bash
-pip install websockets cryptography
+pip3 install pycryptodome argon2-cffi websockets
 ```
 
 
