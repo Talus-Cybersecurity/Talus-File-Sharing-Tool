@@ -14,8 +14,23 @@ Talus is a **context-aware, policy-driven file sharing system** designed to brin
 | Landon Patam | lcpatam@csu.fullerton.edu |
 
 ---
+  
+# Dependencies
 
-# Project Description
+Talus currently relies on a small set of Python libraries to support secure communication and cryptographic operations. As the project evolves, additional dependencies will be added to support machine learning, logging, and expanded security features.
+
+Current dependencies:
+
+| Library | Purpose |
+|-------|-------|
+| websockets | Enables real-time communication between the client and Talus server |
+| cryptography | Provides secure cryptographic primitives such as encryption, decryption, and key management |
+
+These dependencies can be installed using:
+
+```bash
+pip install websockets cryptography
+```
 
 Talus is a **secure file sharing platform** that bridges the gap between enterprise-grade security and consumer accessibility.
 
