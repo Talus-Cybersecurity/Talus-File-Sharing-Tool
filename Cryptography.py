@@ -1,4 +1,5 @@
 from Crypto.PublicKey import RSA
+from Crypto.Random import get_random_bytes
 
 def generate_talus_keys(private_key_path, public_key_path):
     """
@@ -24,3 +25,31 @@ def generate_talus_keys(private_key_path, public_key_path):
         
     except Exception as e:
         print(f"An error occurred during key generation: {e}")
+
+def generateSymmetricKey(key_size=32,symmetric_key_path="key.bin"):
+    """
+    Generating a symmetric key using a key size of 32 bytes
+    for AES-256
+    """
+    try:
+        # 1. Generate key using get_random_bytes import
+        symmetric_key = get_random_bytes(key_size)    
+
+        # 2. Checks if current key has same key size of 32 bytes
+        if symmetric_key and len(symmetric_key) == key_size:                            
+
+            # Write into a key.bin file to export the key into
+            with open(symmetric_key_path, "wb") as f:
+                f.write(symmetric_key)
+            
+            print(f"Symmetric key has been generated and saved to {symmetric_key_path}")
+            return symmetric_key
+           
+        
+        else:
+            print("Symmetric key generation has failed")
+            return None
+        
+    except Exception as e:
+        print(f"An error has occurred: {e}")
+        return None
