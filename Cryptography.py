@@ -172,3 +172,38 @@ def decrypt_key_with_rsa(encrypted_key: bytes, private_key_path: str) -> bytes:
     except Exception as e:
         print(f"An error occurred during RSA key decryption: {e}")
         return None
+    
+
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError, VerificationError, InvalidHashError
+
+# Argon2id config — these match OWASP recommended settings
+ph = PasswordHasher(
+    time_cost=2,        # number of iterations
+    memory_cost=65536,  # 64MB in kibibytes
+    parallelism=2,      # parallel threads
+    hash_len=32,
+    salt_len=16
+)
+
+def hash_password(password: str) -> str:
+    """
+    Hashes a password using Argon2id with a random salt.
+    
+    Args:
+        password: The plaintext password string to hash.
+    
+    Returns:
+        The full Argon2id hash string (includes salt and params),
+        ready to store directly in the database.
+    """
+    try:
+        hashed = ph.hash(password)
+        return hashed
+
+    except Exception as e:
+        print(f"An error occurred during password hashing: {e}")
+        return None
+
+print("\n")
+print(hash_password("hello"))
