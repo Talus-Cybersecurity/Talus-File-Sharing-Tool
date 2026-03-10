@@ -205,5 +205,31 @@ def hash_password(password: str) -> str:
         print(f"An error occurred during password hashing: {e}")
         return None
 
-print("\n")
-print(hash_password("hello"))
+
+
+def verify_password(password: str, stored_hash: str) -> bool:
+    """
+    Verifies a plaintext password against a stored Argon2id hash.
+    
+    Args:
+        password: The plaintext password attempt.
+        stored_hash: The Argon2id hash string retrieved from the database.
+    
+    Returns:
+        True if the password matches, False otherwise.
+    """
+    try:
+        ph.verify(stored_hash, password)
+        return True
+
+    except VerifyMismatchError:
+        # Password does not match — expected failure, not an error
+        return False
+
+    except (VerificationError, InvalidHashError) as e:
+        print(f"An error occurred during password verification: {e}")
+        return False
+    
+# Hashing password testing
+#hashed_password_test = (hash_password("testpassword"))
+#print(verify_password("testpassword", hashed_password_test))
