@@ -1,5 +1,9 @@
 from Crypto.PublicKey import RSA
 from Crypto.Random import get_random_bytes
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad
+import os
+import base64
 
 def generate_talus_keys(private_key_path, public_key_path):
     """
@@ -53,3 +57,28 @@ def generateSymmetricKey(key_size=32,symmetric_key_path="key.bin"):
     except Exception as e:
         print(f"An error has occurred: {e}")
         return None
+
+
+def encrypt(message: str, key: bytes) -> dict:
+    """
+    Encrypts a string message using AES-256-CBC.
+    
+    Args:
+        message: The plaintext string to encrypt.
+        key: A 32-byte AES-256 key (e.g., from generateSymmetricKey()).
+    
+    Returns:
+        A dict with 'iv' and 'ciphertext', both base64-encoded strings.
+    """
+    if len(key) != 32:
+        raise ValueError(f"Key must be 32 bytes for AES-256, got {len(key)}")
+
+    iv = os.urandom(16)
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+    padded_message = pad(message.encode('utf-8'), AES.block_size)
+    ciphertext = cipher.encrypt(padded_message)
+
+    return {
+        "iv": base64.b64encode(iv).decode('utf-8'),
+        "ciphertext": base64.b64encode(ciphertext).decode('utf-8')
+    }
