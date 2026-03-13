@@ -25,13 +25,14 @@ Current dependencies:
 |-------|-------|
 | websockets | Enables real-time communication between the client and Talus server |
 | cryptography | Provides secure cryptographic primitives such as encryption, decryption, and key management |
+| sqlite3 | Built-in Python library used to manage and interact with the local development database
 
 These dependencies can be installed using:
 
 ```bash
-pip3 install pycryptodome argon2-cffi websockets
+pip install pycryptodome argon2-cffi websockets
 ```
-
+Note: For viewing .db files directly in VSCode, the SQLite Viewer extension by Florian Klampfer is recommended.
 
 # Project Description
 
