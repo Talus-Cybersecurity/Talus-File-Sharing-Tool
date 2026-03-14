@@ -25,14 +25,23 @@ Current dependencies:
 |-------|-------|
 | websockets | Enables real-time communication between the client and Talus server |
 | cryptography | Provides secure cryptographic primitives such as encryption, decryption, and key management |
-| sqlite3 | Built-in Python library used to manage and interact with the local development database
+| psycopg2 | Connects Python to the PostgreSQL database for storing and managing Talus data
+| python-dotenv | Loads environment variables from a .env file to keep database credentials out of the codebase
 
 These dependencies can be installed using:
 
 ```bash
-pip install pycryptodome argon2-cffi websockets
+pip install pycryptodome argon2-cffi websockets psycopg2-binary python-dotenv
 ```
-Note: For viewing .db files directly in VSCode, the SQLite Viewer extension by Florian Klampfer is recommended.
+PostgreSQL must be installed and running locally before connecting. 
+For macOS and Linux:
+1. `brew install postgresql` 
+2. `brew services start postgresql`
+
+For Windows, download the PostgreSQL 
+installer through `https://www.postgresql.org/download/.` 
+
+For visualizing the PostgreSQL database, download pgAdmin at https://www.pgadmin.org/download/
 
 # Project Description
 
