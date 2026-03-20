@@ -172,6 +172,53 @@
     .login-btn:hover{background:var(--teal-mid);transform:translateY(-1px);}
     .toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--teal-dark);color:#fff;padding:12px 26px;border-radius:40px;font-size:14px;font-weight:600;box-shadow:0 6px 30px rgba(13,110,110,0.30);opacity:0;pointer-events:none;transition:opacity 0.25s;z-index:300;white-space:nowrap;}
     .toast.show{opacity:1;}
+    /* ═══ RECEIVE PANEL ═══ */
+    .receive-layout{display:grid;grid-template-rows:auto 1fr;height:100%;padding:24px 28px;gap:20px;overflow:hidden;}
+    .receive-status-bar{display:flex;align-items:center;gap:12px;background:var(--teal-dark);color:#fff;padding:13px 20px;border-radius:var(--radius-sm);flex-shrink:0;}
+    .receive-status-dot{width:10px;height:10px;border-radius:50%;background:#4ade80;flex-shrink:0;box-shadow:0 0 0 3px rgba(74,222,128,0.25);animation:pulse 2s infinite;}
+    .receive-status-dot.stopped{background:var(--border);box-shadow:none;animation:none;}
+    @keyframes pulse{0%,100%{box-shadow:0 0 0 3px rgba(74,222,128,0.25)}50%{box-shadow:0 0 0 6px rgba(74,222,128,0.08)}}
+    #receive-status-text{font-size:13px;font-weight:600;letter-spacing:0.03em;}
+    .receive-status-badge{background:var(--teal-accent);color:#fff;font-family:'Space Mono',monospace;font-size:11px;padding:2px 9px;border-radius:20px;}
+    .receive-toggle-btn{margin-left:auto;padding:7px 16px;background:rgba(255,255,255,0.15);border:1.5px solid rgba(255,255,255,0.3);border-radius:var(--radius-sm);color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.15s;}
+    .receive-toggle-btn:hover{background:rgba(255,255,255,0.25);}
+    .receive-cols{display:grid;grid-template-columns:1fr 1fr;gap:20px;min-height:0;}
+    .receive-left,.receive-right{display:flex;flex-direction:column;gap:10px;min-height:0;overflow:hidden;}
+    .receive-section-label{font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);flex-shrink:0;}
+    .receive-queue{background:var(--teal-pale);border:1.5px solid var(--border);border-radius:var(--radius-md);overflow-y:auto;flex:1;min-height:0;}
+    .receive-empty,.receive-detail-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;height:100%;color:var(--text-muted);text-align:center;padding:24px;}
+    .receive-empty svg,.receive-detail-empty svg{width:48px;height:48px;stroke:var(--border);}
+    .receive-empty p,.receive-detail-empty p{font-size:14px;font-weight:500;}
+    .receive-empty small,.receive-detail-empty small{font-size:12px;}
+    .receive-queue-item{display:flex;align-items:center;gap:12px;padding:13px 16px;cursor:pointer;transition:background 0.15s;border-bottom:1px solid var(--border);}
+    .receive-queue-item:last-child{border-bottom:none;}
+    .receive-queue-item:hover{background:var(--teal-light);}
+    .receive-queue-item.active{background:var(--teal-light);border-left:3px solid var(--teal-dark);}
+    .receive-queue-item.active{padding-left:13px;}
+    .rq-avatar{width:36px;height:36px;border-radius:50%;background:var(--teal-accent);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .rq-info{flex:1;min-width:0;}
+    .rq-sender{font-size:14px;font-weight:600;color:var(--text-main);}
+    .rq-meta{font-size:12px;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .rq-status{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;flex-shrink:0;}
+    .rq-status.pending{background:#fef9c3;color:#854d0e;}
+    .rq-status.accepted{background:#dcfce7;color:#166534;}
+    .rq-status.declined{background:#fee2e2;color:#991b1b;}
+    .receive-right{background:var(--surface-2);border-radius:var(--radius-md);border:1.5px solid var(--border);padding:16px;overflow-y:auto;}
+    .receive-sender-card{display:flex;align-items:center;gap:12px;background:var(--teal-pale);border:1.5px solid var(--border);border-radius:var(--radius-md);padding:13px 16px;}
+    .receive-sender-avatar{width:40px;height:40px;border-radius:50%;background:var(--teal-dark);color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .receive-sender-name{font-size:15px;font-weight:700;color:var(--text-main);}
+    .receive-sender-time{font-size:12px;color:var(--text-muted);font-family:'Space Mono',monospace;margin-top:2px;}
+    .receive-status-pill{margin-left:auto;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;}
+    .receive-status-pill.pending{background:#fef9c3;color:#854d0e;}
+    .receive-status-pill.accepted{background:#dcfce7;color:#166534;}
+    .receive-status-pill.declined{background:#fee2e2;color:#991b1b;}
+    .receive-files-list,.receive-options-list{display:flex;flex-direction:column;gap:5px;margin-top:8px;}
+    .receive-file-chip,.receive-opt-chip{display:flex;align-items:center;gap:8px;background:var(--teal-light);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:13px;color:var(--teal-dark);font-weight:500;}
+    .receive-detail-actions{display:flex;gap:10px;margin-top:18px;}
+    .btn-decline{flex:1;padding:11px;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:none;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;color:var(--text-muted);transition:background 0.15s;}
+    .btn-decline:hover{background:#fee2e2;color:#991b1b;border-color:#fca5a5;}
+    .btn-accept{flex:2;padding:11px;border:none;border-radius:var(--radius-sm);background:var(--teal-dark);color:#fff;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:background 0.15s,transform 0.12s;}
+    .btn-accept:hover{background:var(--teal-mid);transform:translateY(-1px);}
   </style>
 </head>
 <body>
@@ -193,8 +240,8 @@
     <div><div class="logo">TALUS</div><div class="header-subtitle">Secure File Transfer</div></div>
     <div class="header-divider"></div>
     <div class="header-tabs">
-      <button class="tab-btn active">Send</button>
-      <button class="tab-btn">Receive</button>
+      <button class="tab-btn active" onclick="switchTab(this,'send')">Send</button>
+      <button class="tab-btn" onclick="switchTab(this,'receive')">Receive</button>
     </div>
     <div style="position:relative;margin-left:16px;">
       <button class="profile-btn" id="profile-btn" onclick="toggleProfileMenu()"></button>
@@ -295,6 +342,15 @@
         </div>
       </div>
     </div>
+    <!-- RECEIVE PANEL -->
+    <div class="panel" id="receive-panel">
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--text-muted);">
+        <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="var(--border)" stroke-width="1.4"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0018 9h-1.26A8 8 0 103 16.29"/></svg>
+        <p style="font-size:16px;font-weight:600;">Receive</p>
+        <p style="font-size:13px;">Coming soon</p>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -466,6 +522,14 @@
     const btn = document.getElementById('profile-btn'), drop = document.getElementById('profile-dropdown');
     if (!btn.contains(e.target) && !drop.contains(e.target)) drop.classList.remove('open');
   });
+
+  // ── Tab switching ─────────────────────────────────────────────────────
+  function switchTab(btn, panel) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById(panel + '-panel').classList.add('active');
+  }
 
   // TALUS-109: Text upload
   function openTextModal() { document.getElementById('text-modal').classList.add('open'); setTimeout(() => document.getElementById('text-input').focus(), 50); }
