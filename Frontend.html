@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>TALUS — Final Verification</title>
+  <title>TALUS — File Preview</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
   <style>
     :root { --teal-dark:#0d6e6e;--teal-mid:#117a7a;--teal-accent:#14b8b8;--teal-light:#d0eaea;--teal-pale:#e8f4f4;--bg:#f0f7f7;--surface:#ffffff;--surface-2:#dceaea;--text-main:#1a2e2e;--text-muted:#5a7a7a;--border:#b0d0d0;--radius-sm:10px;--radius-md:16px;--header-h:62px; }
@@ -63,20 +63,7 @@
     .toggle input:checked+.toggle-track{background:var(--teal-dark);}
     .toggle-track::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform 0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.18);}
     .toggle input:checked+.toggle-track::after{transform:translateX(20px);}
-    /* TALUS-159: Final verification */
-    .confirm-recipient{display:flex;align-items:center;gap:14px;background:var(--teal-pale);border:1.5px solid var(--border);border-radius:var(--radius-md);padding:14px 16px;margin-bottom:18px;}
-    .confirm-recipient .big-avatar{width:44px;height:44px;border-radius:50%;background:var(--teal-dark);color:#fff;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-    .confirm-recipient-name{font-size:16px;font-weight:700;color:var(--text-main);}
-    .confirm-recipient-tag{font-family:'Space Mono',monospace;font-size:12px;color:var(--text-muted);margin-top:2px;}
-    .confirm-two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:4px;}
-    .confirm-items-label{font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
-    .confirm-items-list,.confirm-options-list{display:flex;flex-direction:column;gap:5px;max-height:160px;overflow-y:auto;}
-    .confirm-item-chip,.confirm-option-chip{display:flex;align-items:center;gap:8px;background:var(--teal-light);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:13px;color:var(--teal-dark);font-weight:500;}
-    .confirm-option-value{font-family:'Space Mono',monospace;font-size:11px;color:var(--text-muted);margin-left:auto;}
-    .confirm-no-options{font-size:13px;color:var(--text-muted);padding:8px 4px;}
-    .btn-confirm{padding:10px 22px;border:none;border-radius:var(--radius-sm);background:var(--teal-dark);color:#fff;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:background 0.15s;}
-    .btn-confirm:hover{background:var(--teal-mid);}
-    /* TALUS-139 */
+    /* TALUS-139: File preview */
     .attached-chip{display:flex;align-items:center;gap:8px;background:var(--teal-light);border:1px solid var(--border);border-radius:8px;padding:5px 11px;font-size:13px;font-weight:500;color:var(--teal-dark);cursor:pointer;transition:border-color 0.15s;}
     .attached-chip:hover{border-color:var(--teal-accent);}
     .preview-modal-body{min-height:120px;max-height:300px;overflow-y:auto;background:var(--teal-pale);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:14px;font-size:13px;line-height:1.6;color:var(--text-main);white-space:pre-wrap;word-break:break-all;}
@@ -310,34 +297,6 @@
   </div>
 </div>
 
-<!-- TALUS-159: Final verification modal -->
-<div class="modal-overlay" id="confirm-modal">
-  <div class="modal" style="width:520px">
-    <div class="modal-title">📤 Confirm Send</div>
-    <div class="confirm-recipient">
-      <div class="big-avatar" id="confirm-avatar"></div>
-      <div>
-        <div class="confirm-recipient-name" id="confirm-name"></div>
-        <div class="confirm-recipient-tag" id="confirm-tag"></div>
-      </div>
-    </div>
-    <div class="confirm-two-col">
-      <div>
-        <div class="confirm-items-label">Items to send</div>
-        <div class="confirm-items-list" id="confirm-items-list"></div>
-      </div>
-      <div>
-        <div class="confirm-items-label">Active send options</div>
-        <div class="confirm-options-list" id="confirm-options-list"></div>
-      </div>
-    </div>
-    <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeModal('confirm-modal')">Cancel</button>
-      <button class="btn-confirm" onclick="confirmSend()">Confirm &amp; Send</button>
-    </div>
-  </div>
-</div>
-
 <!-- TALUS-139: File preview modal -->
 <div class="modal-overlay" id="preview-modal">
   <div class="modal" style="width:540px">
@@ -487,47 +446,6 @@
     e.target.value = '';
   }
 
-  // TALUS-159: Final verification
-  function openConfirmModal(id) {
-    if (!attachedItems.length) { toastMsg('Attach something to send first.'); return; }
-    const r = recipients.find(r => r.id === id);
-    if (!r) return;
-    document.getElementById('confirm-avatar').textContent = r.username.slice(0,2).toUpperCase();
-    document.getElementById('confirm-name').textContent = r.username;
-    document.getElementById('confirm-tag').textContent = '#' + r.tag;
-    document.getElementById('confirm-items-list').innerHTML = attachedItems.map(item =>
-      `<div class="confirm-item-chip">
-        <span>${item.type==='folder'?'📁':item.type==='text'?'📝':'📄'}</span>
-        <span>${item.name}</span>
-      </div>`).join('');
-    // Read active send option toggles
-    const labels = ['IP Filter','Device Certification','Track File Views','Time of Day','Limited Access','Watermark','Password / PIN'];
-    const icons  = ['🌐','🔒','👁','🕐','🔢','💧','🔑'];
-    const values = [
-      ipList.length ? ipList.slice(0,2).join(', ')+(ipList.length>2?'…':'') : null,
-      null, null,
-      document.getElementById('tod-value').textContent,
-      document.getElementById('la-value').textContent+' views max',
-      null, null
-    ];
-    const toggles = document.querySelectorAll('.right-col .toggle input');
-    const active = [];
-    toggles.forEach((t,i) => { if (t.checked) active.push({ label:labels[i], icon:icons[i], value:values[i] }); });
-    const optEl = document.getElementById('confirm-options-list');
-    optEl.innerHTML = active.length
-      ? active.map(o=>`<div class="confirm-option-chip"><span>${o.icon}</span><span>${o.label}</span>${o.value?`<span class="confirm-option-value">${o.value}</span>`:''}</div>`).join('')
-      : `<div class="confirm-no-options">No send options enabled.</div>`;
-    document.getElementById('confirm-modal')._recipientId = id;
-    document.getElementById('confirm-modal').classList.add('open');
-  }
-  function confirmSend() {
-    const id = document.getElementById('confirm-modal')._recipientId;
-    const r = recipients.find(r=>r.id===id);
-    closeModal('confirm-modal');
-    toastMsg(`✓ Sent ${attachedItems.length} item(s) to ${r.username}#${r.tag}`);
-  }
-  document.getElementById('confirm-modal').addEventListener('click',function(e){if(e.target===this)closeModal('confirm-modal');});
-
   // TALUS-139: File preview
   function openPreview(id) {
     const item = attachedItems.find(i=>i.id===id);
@@ -576,7 +494,7 @@
     const list = document.getElementById('user-list');
     if (!recipients.length) { list.innerHTML=`<div style="padding:20px 16px;font-size:13px;color:var(--text-muted);text-align:center;">No recipients yet.<br>Enter a username#tag above.</div>`; return; }
     list.innerHTML = recipients.map(r=>`
-      <div class="user-item" onclick="openConfirmModal(${r.id})">
+      <div class="user-item">
         <div class="avatar">${r.username.slice(0,2).toUpperCase()}</div>
         <span style="flex:1">${r.username}<span style="opacity:0.6;font-size:12px">#${r.tag}</span></span>
         <button class="remove-btn" style="font-size:18px;" onclick="event.stopPropagation();removeRecipient(${r.id})">×</button>
