@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>TALUS — Recipient Section</title>
+  <title>TALUS — File Preview</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
   <style>
     :root { --teal-dark:#0d6e6e;--teal-mid:#117a7a;--teal-accent:#14b8b8;--teal-light:#d0eaea;--teal-pale:#e8f4f4;--bg:#f0f7f7;--surface:#ffffff;--surface-2:#dceaea;--text-main:#1a2e2e;--text-muted:#5a7a7a;--border:#b0d0d0;--radius-sm:10px;--radius-md:16px;--header-h:62px; }
@@ -63,7 +63,15 @@
     .toggle input:checked+.toggle-track{background:var(--teal-dark);}
     .toggle-track::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform 0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.18);}
     .toggle input:checked+.toggle-track::after{transform:translateX(20px);}
-    /* TALUS-158: Recipient section */
+    /* TALUS-139: File preview */
+    .attached-chip{display:flex;align-items:center;gap:8px;background:var(--teal-light);border:1px solid var(--border);border-radius:8px;padding:5px 11px;font-size:13px;font-weight:500;color:var(--teal-dark);cursor:pointer;transition:border-color 0.15s;}
+    .attached-chip:hover{border-color:var(--teal-accent);}
+    .preview-modal-body{min-height:120px;max-height:300px;overflow-y:auto;background:var(--teal-pale);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:14px;font-size:13px;line-height:1.6;color:var(--text-main);white-space:pre-wrap;word-break:break-all;}
+    .preview-meta{display:flex;align-items:center;gap:10px;margin-bottom:14px;background:var(--teal-pale);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;}
+    .preview-meta-icon{font-size:22px;}
+    .preview-meta-name{font-weight:600;font-size:14px;color:var(--text-main);}
+    .preview-meta-type{font-size:11px;color:var(--text-muted);font-family:'Space Mono',monospace;}
+    /* TALUS-158 */
     .section-label{font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);flex-shrink:0;}
     .recipient-input-row{display:flex;gap:8px;flex-shrink:0;}
     .recipient-input{flex:1;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:'Space Mono',monospace;font-size:13px;color:var(--text-main);background:var(--teal-pale);outline:none;transition:border-color 0.18s;}
@@ -289,6 +297,24 @@
   </div>
 </div>
 
+<!-- TALUS-139: File preview modal -->
+<div class="modal-overlay" id="preview-modal">
+  <div class="modal" style="width:540px">
+    <div class="modal-title">🔍 File Preview</div>
+    <div class="preview-meta">
+      <span class="preview-meta-icon" id="preview-icon"></span>
+      <div>
+        <div class="preview-meta-name" id="preview-name"></div>
+        <div class="preview-meta-type" id="preview-type"></div>
+      </div>
+    </div>
+    <div class="preview-modal-body" id="preview-body"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('preview-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- IP Modal -->
 <div class="modal-overlay" id="ip-modal">
   <div class="modal settings-modal">
@@ -406,7 +432,7 @@
   function attachText() {
     const val = document.getElementById('text-input').value.trim();
     if (!val) { toastMsg('Please enter some text first.'); return; }
-    addItem(val.length > 32 ? val.slice(0,32)+'…' : val, 'text');
+    addItem(val.length > 32 ? val.slice(0,32)+'…' : val, 'text', null, val);
     document.getElementById('text-input').value = '';
     closeTextModal();
   }
@@ -416,9 +442,37 @@
   function attachFiles(e, type) {
     const files = Array.from(e.target.files);
     if (!files.length) return;
-    files.forEach(f => addItem(f.name, 'file'));
+    files.forEach(f => addItem(f.name, 'file', f));
     e.target.value = '';
   }
+
+  // TALUS-139: File preview
+  function openPreview(id) {
+    const item = attachedItems.find(i=>i.id===id);
+    if (!item) return;
+    const icon = item.type==='folder'?'📁':item.type==='text'?'📝':'📄';
+    document.getElementById('preview-icon').textContent = icon;
+    document.getElementById('preview-name').textContent = item.name;
+    document.getElementById('preview-type').textContent = item.type.toUpperCase() + (item.fileObj ? ` · ${(item.fileObj.size/1024).toFixed(1)} KB` : '');
+    const body = document.getElementById('preview-body');
+    if (item.type === 'text') {
+      body.textContent = item.fullText || item.name;
+    } else if (item.fileObj && item.fileObj.type.startsWith('text/')) {
+      const reader = new FileReader();
+      reader.onload = e => { body.textContent = e.target.result; };
+      reader.readAsText(item.fileObj);
+      body.textContent = 'Loading…';
+    } else if (item.fileObj && item.fileObj.type.startsWith('image/')) {
+      const url = URL.createObjectURL(item.fileObj);
+      body.innerHTML = `<img src="${url}" style="max-width:100%;border-radius:6px;" onload="URL.revokeObjectURL(this.src)"/>`;
+    } else {
+      body.textContent = item.fileObj
+        ? `File: ${item.fileObj.name}\nSize: ${(item.fileObj.size/1024).toFixed(1)} KB\nType: ${item.fileObj.type||'unknown'}`
+        : `${item.type === 'folder' ? 'Folder' : 'Item'}: ${item.name}\nPreview not available for this type.`;
+    }
+    document.getElementById('preview-modal').classList.add('open');
+  }
+  document.getElementById('preview-modal').addEventListener('click',function(e){if(e.target===this)closeModal('preview-modal');});
 
   // TALUS-158: Recipient section
   let recipients = [];
@@ -518,7 +572,8 @@
     try {
       const text = await navigator.clipboard.readText();
       if (!text.trim()) { toastMsg('Clipboard is empty or not text.'); return; }
-      addItem('[Clipboard] ' + text.trim().slice(0,30) + (text.length > 30 ? '…' : ''), 'text');
+      const preview = '[Clipboard] ' + text.trim().slice(0,30) + (text.length > 30 ? '…' : '');
+      addItem(preview, 'text', null, text.trim());
     } catch(e) { toastMsg('Clipboard access denied — check browser permissions.'); }
   }
 
@@ -539,12 +594,12 @@
   document.addEventListener('dragover', e => e.preventDefault());
   document.addEventListener('drop', e => {
     e.preventDefault(); dragDepth = 0; overlay.classList.remove('show');
-    Array.from(e.dataTransfer.files).forEach(f => addItem(f.name, 'file'));
+    Array.from(e.dataTransfer.files).forEach(f => addItem(f.name, 'file', f));
   });
 
-  function addItem(name, type) {
+  function addItem(name, type, fileObj, fullText) {
     const id = Date.now() + Math.random();
-    attachedItems.push({ id, name, type });
+    attachedItems.push({ id, name, type, fileObj: fileObj||null, fullText: fullText||null });
     renderAttached();
     toastMsg(`"${name}" attached`);
   }
@@ -554,10 +609,10 @@
     document.getElementById('attach-count').textContent = count;
     document.getElementById('attach-count-label').textContent = `${count} item(s) attached`;
     document.getElementById('attached-list').innerHTML = attachedItems.map(item => `
-      <div class="attached-chip">
+      <div class="attached-chip" onclick="openPreview(${item.id})" title="Click to preview">
         <span>${item.type==='folder'?'📁':item.type==='text'?'📝':'📄'}</span>
         <span class="chip-name">${item.name}</span>
-        <button class="remove-btn" onclick="removeItem(${item.id})">×</button>
+        <button class="remove-btn" onclick="event.stopPropagation();removeItem(${item.id})">×</button>
       </div>`).join('');
   }
 
