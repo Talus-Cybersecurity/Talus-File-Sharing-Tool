@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TALUS — Login</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --teal-dark:   #0d6e6e;
+      --teal-mid:    #117a7a;
+      --teal-accent: #14b8b8;
+      --teal-light:  #d0eaea;
+      --teal-pale:   #e8f4f4;
+      --bg:          #f0f7f7;
+      --surface:     #ffffff;
+      --text-main:   #1a2e2e;
+      --text-muted:  #5a7a7a;
+      --border:      #b0d0d0;
+      --radius-sm:   10px;
+      --radius-md:   16px;
+      --header-h:    62px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; width: 100%; overflow: hidden; font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text-main); }
+
+    @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ═══ SHELL ═══ */
+    .shell {
+      display: grid;
+      grid-template-rows: var(--header-h) 1fr;
+      grid-template-columns: 1fr;
+      grid-template-areas: "header" "main";
+      height: 100vh; width: 100vw;
+    }
+
+    /* ─── Header ─── */
+    header {
+      grid-area: header;
+      background: var(--teal-dark);
+      display: flex; align-items: center;
+      padding: 0 28px; gap: 16px;
+      border-bottom: 2px solid rgba(255,255,255,0.08);
+      z-index: 10;
+    }
+    .logo { font-family: 'Space Mono', monospace; font-size: 20px; font-weight: 700; color: #fff; letter-spacing: 0.1em; }
+    .header-subtitle { font-size: 11px; color: rgba(255,255,255,0.45); letter-spacing: 0.06em; text-transform: uppercase; margin-top: 2px; }
+    .header-divider { width: 1px; height: 28px; background: rgba(255,255,255,0.15); margin: 0 8px; }
+    .header-tabs { display: flex; gap: 4px; margin-left: auto; }
+    .tab-btn {
+      font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+      letter-spacing: 0.05em; text-transform: uppercase;
+      color: rgba(255,255,255,0.55); background: transparent; border: none;
+      padding: 8px 20px; border-radius: 8px; cursor: pointer;
+      transition: color 0.2s, background 0.2s;
+    }
+    .tab-btn:hover { color: #fff; background: rgba(255,255,255,0.08); }
+    .tab-btn.active { background: rgba(255,255,255,0.15); color: #fff; }
+
+    /* ─── Main placeholder ─── */
+    main {
+      grid-area: main; overflow: hidden;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      color: var(--text-muted); font-size: 15px;
+    }
+
+    /* ─── Profile ─── */
+    .profile-btn {
+      position: relative; width: 36px; height: 36px; border-radius: 50%;
+      background: rgba(255,255,255,0.18); border: 2px solid rgba(255,255,255,0.35);
+      color: #fff; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 700;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      margin-left: 16px; transition: background 0.15s; flex-shrink: 0;
+    }
+    .profile-btn:hover { background: rgba(255,255,255,0.28); }
+    .profile-dropdown {
+      display: none; position: absolute; top: calc(100% + 10px); right: 0;
+      background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: var(--radius-md); min-width: 200px;
+      box-shadow: 0 8px 32px rgba(13,110,110,0.18); z-index: 500; overflow: hidden;
+      animation: slideUp 0.18s ease;
+    }
+    .profile-dropdown.open { display: block; }
+    .profile-dropdown-header { padding: 14px 16px 10px; border-bottom: 1px solid var(--border); }
+    .profile-dropdown-name { font-size: 14px; font-weight: 700; color: var(--text-main); }
+    .profile-dropdown-user { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .profile-dropdown-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 11px 16px; font-size: 14px; font-weight: 500;
+      color: var(--text-main); cursor: pointer; transition: background 0.13s;
+    }
+    .profile-dropdown-item:hover { background: var(--teal-pale); }
+    .profile-dropdown-item.danger { color: #c0392b; }
+    .profile-dropdown-item.danger:hover { background: #fdf0ee; }
+    .profile-dropdown-item svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; flex-shrink: 0; }
+
+    /* ═══ LOGIN SCREEN ═══ */
+    .login-screen {
+      position: fixed; inset: 0; z-index: 1000;
+      background: var(--teal-dark);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .login-screen.hidden { display: none; }
+    .login-bg-pattern {
+      position: absolute; inset: 0; opacity: 0.04;
+      background-image: repeating-linear-gradient(45deg, #fff 0, #fff 1px, transparent 0, transparent 50%);
+      background-size: 20px 20px; pointer-events: none;
+    }
+    .login-box {
+      position: relative; z-index: 1;
+      background: var(--surface); border-radius: 24px;
+      padding: 44px 40px 36px; width: 400px; max-width: 94vw;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.28); animation: slideUp 0.3s ease;
+    }
+    .login-logo { font-family: 'Space Mono', monospace; font-size: 26px; font-weight: 700; color: var(--teal-dark); letter-spacing: 0.1em; text-align: center; margin-bottom: 4px; }
+    .login-tagline { text-align: center; font-size: 12px; color: var(--text-muted); letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 32px; }
+    .login-field { margin-bottom: 16px; }
+    .login-field label { display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
+    .login-field input {
+      width: 100%; padding: 11px 14px; border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif;
+      font-size: 14px; color: var(--text-main); background: var(--teal-pale);
+      outline: none; transition: border-color 0.18s;
+    }
+    .login-field input:focus { border-color: var(--teal-accent); }
+    .login-error { color: #c0392b; font-size: 13px; margin-bottom: 12px; min-height: 18px; text-align: center; }
+    .login-btn {
+      width: 100%; padding: 13px; background: var(--teal-dark); color: #fff; border: none;
+      border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif;
+      font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 4px;
+      transition: background 0.18s, transform 0.12s;
+    }
+    .login-btn:hover { background: var(--teal-mid); transform: translateY(-1px); }
+
+    /* ─── Toast ─── */
+    .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); background: var(--teal-dark); color: #fff; padding: 12px 26px; border-radius: 40px; font-size: 14px; font-weight: 600; box-shadow: 0 6px 30px rgba(13,110,110,0.30); opacity: 0; pointer-events: none; transition: opacity 0.25s; z-index: 300; white-space: nowrap; }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN — TALUS-157 -->
+<div class="login-screen" id="login-screen">
+  <div class="login-bg-pattern"></div>
+  <div class="login-box">
+    <div class="login-logo">TALUS</div>
+    <div class="login-tagline">Secure File Transfer</div>
+    <div class="login-field">
+      <label>Username</label>
+      <input type="text" id="login-username" placeholder="Enter your username" autocomplete="username"
+        onkeydown="if(event.key==='Enter') document.getElementById('login-password').focus()"/>
+    </div>
+    <div class="login-field">
+      <label>Password</label>
+      <input type="password" id="login-password" placeholder="Enter your password" autocomplete="current-password"
+        onkeydown="if(event.key==='Enter') doLogin()"/>
+    </div>
+    <div class="login-error" id="login-error"></div>
+    <button class="login-btn" onclick="doLogin()">Sign In</button>
+  </div>
+</div>
+
+<div class="shell">
+  <header>
+    <div>
+      <div class="logo">TALUS</div>
+      <div class="header-subtitle">Secure File Transfer</div>
+    </div>
+    <div class="header-divider"></div>
+    <div class="header-tabs">
+      <button class="tab-btn active">Send</button>
+      <button class="tab-btn">Receive</button>
+    </div>
+    <div style="position:relative; margin-left:16px;">
+      <button class="profile-btn" id="profile-btn" onclick="toggleProfileMenu()"></button>
+      <div class="profile-dropdown" id="profile-dropdown">
+        <div class="profile-dropdown-header">
+          <div class="profile-dropdown-name" id="profile-display-name"></div>
+          <div class="profile-dropdown-user" id="profile-display-user"></div>
+        </div>
+        <div class="profile-dropdown-item danger" onclick="doLogout()">
+          <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Sign Out
+        </div>
+      </div>
+    </div>
+  </header>
+  <main>
+    <p>Logged in as <strong id="main-username"></strong>. More features coming in subsequent tickets.</p>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let currentUser = null;
+
+  function doLogin() {
+    const username = document.getElementById('login-username').value.trim();
+    const password = document.getElementById('login-password').value;
+    const errEl = document.getElementById('login-error');
+    if (!username || !password) { errEl.textContent = 'Please enter both username and password.'; return; }
+    if (password.length < 3) { errEl.textContent = 'Invalid username or password.'; return; }
+    errEl.textContent = '';
+    currentUser = { username, initials: username.slice(0,2).toUpperCase() };
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('profile-btn').textContent = currentUser.initials;
+    document.getElementById('profile-display-name').textContent = username;
+    document.getElementById('profile-display-user').textContent = '@' + username.toLowerCase().replace(/\s+/g,'');
+    document.getElementById('main-username').textContent = username;
+    toastMsg('Welcome, ' + username + '!');
+  }
+
+  function doLogout() {
+    currentUser = null;
+    document.getElementById('profile-dropdown').classList.remove('open');
+    document.getElementById('login-screen').classList.remove('hidden');
+    document.getElementById('login-username').value = '';
+    document.getElementById('login-password').value = '';
+    document.getElementById('login-error').textContent = '';
+    setTimeout(() => document.getElementById('login-username').focus(), 100);
+  }
+
+  function toggleProfileMenu() {
+    document.getElementById('profile-dropdown').classList.toggle('open');
+  }
+
+  document.addEventListener('click', function(e) {
+    const btn = document.getElementById('profile-btn');
+    const drop = document.getElementById('profile-dropdown');
+    if (!btn.contains(e.target) && !drop.contains(e.target)) drop.classList.remove('open');
+  });
+
+  let toastTimer;
+  function toastMsg(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+  }
+</script>
+</body>
+</html>
