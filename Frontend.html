@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>TALUS — Sender File Constraints</title>
+  <title>TALUS — Recipient Section</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
   <style>
     :root { --teal-dark:#0d6e6e;--teal-mid:#117a7a;--teal-accent:#14b8b8;--teal-light:#d0eaea;--teal-pale:#e8f4f4;--bg:#f0f7f7;--surface:#ffffff;--surface-2:#dceaea;--text-main:#1a2e2e;--text-muted:#5a7a7a;--border:#b0d0d0;--radius-sm:10px;--radius-md:16px;--header-h:62px; }
@@ -63,6 +63,22 @@
     .toggle input:checked+.toggle-track{background:var(--teal-dark);}
     .toggle-track::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform 0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.18);}
     .toggle input:checked+.toggle-track::after{transform:translateX(20px);}
+    /* TALUS-158: Recipient section */
+    .section-label{font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);flex-shrink:0;}
+    .recipient-input-row{display:flex;gap:8px;flex-shrink:0;}
+    .recipient-input{flex:1;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:'Space Mono',monospace;font-size:13px;color:var(--text-main);background:var(--teal-pale);outline:none;transition:border-color 0.18s;}
+    .recipient-input:focus{border-color:var(--teal-accent);}
+    .recipient-input::placeholder{color:var(--text-muted);font-family:'DM Sans',sans-serif;font-size:12px;}
+    .recipient-add-btn{width:40px;height:40px;flex-shrink:0;background:var(--teal-dark);border:none;border-radius:var(--radius-sm);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s,transform 0.12s;}
+    .recipient-add-btn:hover{background:var(--teal-mid);transform:scale(1.05);}
+    .recipient-add-btn svg{width:18px;height:18px;}
+    .user-list{background:var(--teal-pale);border:1.5px solid var(--border);border-radius:var(--radius-md);overflow-y:auto;flex:1;min-height:0;}
+    .user-item{padding:12px 16px;font-size:14px;font-weight:500;cursor:pointer;color:var(--text-main);transition:background 0.15s;display:flex;align-items:center;gap:10px;}
+    .user-item+.user-item{border-top:1px solid var(--border);}
+    .user-item:hover{background:var(--teal-light);}
+    .avatar{width:28px;height:28px;border-radius:50%;background:var(--teal-accent);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .remove-btn{background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:16px;line-height:1;padding:0 2px;}
+    .remove-btn:hover{color:#c0392b;}
     /* Settings sub-modals */
     .settings-modal{width:460px;}
     .field-group{display:flex;flex-direction:column;gap:14px;}
@@ -206,6 +222,16 @@
               <span class="count-badge" id="attach-count">0</span>
             </div>
             <div class="attached-scroll" id="attached-list"></div>
+
+            <!-- TALUS-158: Recipient section -->
+            <div class="section-label">Recipients</div>
+            <div class="recipient-input-row">
+              <input type="text" id="recipient-input" class="recipient-input" placeholder="username#0000" maxlength="64" onkeydown="if(event.key==='Enter') addRecipient()"/>
+              <button class="recipient-add-btn" onclick="addRecipient()" title="Add recipient">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </button>
+            </div>
+            <div class="user-list" id="user-list"></div>
           </div>
 
           <!-- TALUS-136: Send options panel -->
@@ -393,6 +419,34 @@
     files.forEach(f => addItem(f.name, 'file'));
     e.target.value = '';
   }
+
+  // TALUS-158: Recipient section
+  let recipients = [];
+  function addRecipient() {
+    const input = document.getElementById('recipient-input');
+    const val = input.value.trim();
+    if (!val) { toastMsg('Enter a username#tag to add.'); return; }
+    const match = val.match(/^(.+)#(\d{1,8})$/);
+    if (!match) { toastMsg('Format must be username#0000'); input.focus(); return; }
+    const username = match[1].trim(), tag = match[2];
+    const full = `${username}#${tag}`;
+    if (recipients.find(r=>r.full.toLowerCase()===full.toLowerCase())) { toastMsg(`${full} already added.`); input.value=''; return; }
+    const id = Date.now() + Math.random();
+    recipients.push({ id, username, tag, full });
+    renderRecipients(); input.value=''; toastMsg(`${full} added`);
+  }
+  function removeRecipient(id) { recipients=recipients.filter(r=>r.id!==id); renderRecipients(); }
+  function renderRecipients() {
+    const list = document.getElementById('user-list');
+    if (!recipients.length) { list.innerHTML=`<div style="padding:20px 16px;font-size:13px;color:var(--text-muted);text-align:center;">No recipients yet.<br>Enter a username#tag above.</div>`; return; }
+    list.innerHTML = recipients.map(r=>`
+      <div class="user-item">
+        <div class="avatar">${r.username.slice(0,2).toUpperCase()}</div>
+        <span style="flex:1">${r.username}<span style="opacity:0.6;font-size:12px">#${r.tag}</span></span>
+        <button class="remove-btn" style="font-size:18px;" onclick="event.stopPropagation();removeRecipient(${r.id})">×</button>
+      </div>`).join('');
+  }
+  renderRecipients();
 
   // TALUS-136: Send options
   function openSetting(name) {
