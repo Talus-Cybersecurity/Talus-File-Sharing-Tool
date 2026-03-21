@@ -565,13 +565,35 @@
   let selectedReceiveId = null;
   let receiveInitialised = false;
 
-   function initReceive() {
+  const API_BASE = 'https://your-api-url.com' // Make sure the API database we are using is connected here
+
+  async function initReceive() {
     if (receiveInitialised) return;
     receiveInitialised = true;
-    receiveItems = _demoTransfers.map(t => ({ ...t }));
-    renderReceiveQueue();
-    updateReceiveBadge();
+    await fetchTransfers();
+    startPolling();
   }
+
+  async function fetchTransfers() {
+    try {
+      const res = await fetch(`${API_BASE}/transfers/incoming`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (!res.ok) throw new Error(`Server error: ${res.status}`);
+      const data = await res.json();
+      receiveItems = data.transfers;
+      renderReceiveQueue();
+      updateReceiveBadge();
+    } catch (err) {
+      toastMsg('⚠ Could not load transfers — retrying…');
+      console.error('fetchTransfers error:', err);
+    }
+}
+
+function startPolling() {
+  setInterval(fetchTransfers, 10000); // polls every 10 seconds
+}
  
   function toggleReceive() {
     receiveActive = !receiveActive;
@@ -662,10 +684,19 @@
       <div style="margin-top:16px;font-size:13px;color:var(--text-muted);">
         This transfer was <strong>${item.status}</strong>.
       </div>`}`;
-  }
+}
  
- function respondReceive(id, decision) {
+async function respondReceive(id, decision) {
   receiveItems = receiveItems.map(i => i.id === id ? { ...i, status: decision } : i);
+  try {
+    await fetch(`${API_BASE}/transfers/${id}/${decision}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+  } catch (err) {
+    toastMsg('⚠ Could not sync status to server.');
+    console.error('respondReceive sync error:', err);
+}
   if (decision === 'accepted') downloadTransfer(id);
   selectedReceiveId = null;
   renderReceiveQueue();
