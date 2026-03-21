@@ -617,7 +617,7 @@
         <div class="receive-sender-avatar">${item.initials}</div>
         <div>
           <div class="receive-sender-name">${item.sender}</div>
-          <div class="receive-sender-time">${item.tag} · ${item.time}</div>
+          <div class="receive-sender-time">${item.tag} · Received ${item.time} · ${item.files.length} file(s)</div>
         </div>
         <span class="receive-status-pill ${item.status}">${item.status}</span>
       </div>
@@ -629,7 +629,7 @@
             <div class="receive-file-chip">
               <span>${fileIcon(f)}</span>
               <span style="flex:1">${f.name}</span>
-              <span style="font-family:'Space Mono',monospace;font-size:11px;color:var(--text-muted)">${f.size}</span>
+              <span style="font-family:'Space Mono',monospace;font-size:11px;color:var(--text-muted)">${f.size} · ${f.type}</span>
             </div>`).join('')}
         </div>
       </div>
