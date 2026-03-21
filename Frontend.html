@@ -342,18 +342,45 @@
         </div>
       </div>
     </div>
-    <!-- RECEIVE PANEL -->
-    <div class="panel" id="receive-panel">
-      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--text-muted);">
-        <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="var(--border)" stroke-width="1.4"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0018 9h-1.26A8 8 0 103 16.29"/></svg>
-        <p style="font-size:16px;font-weight:600;">Receive</p>
-        <p style="font-size:13px;">Coming soon</p>
-      </div>
+<!-- RECEIVE PANEL — TALUS-176 -->
+<div class="panel" id="receive-panel">
+  <div class="receive-layout">
+
+    <!-- Status bar -->
+    <div class="receive-status-bar">
+      <div class="receive-status-dot" id="receive-dot"></div>
+      <span id="receive-status-text">Listening for incoming transfers…</span>
+      <span class="receive-status-badge" id="receive-badge">0 pending</span>
+      <button class="receive-toggle-btn" id="receive-toggle-btn" onclick="toggleReceive()">Stop</button>
     </div>
 
-  </main>
-</div>
+    <!-- Two-column body -->
+    <div class="receive-cols">
 
+      <!-- Left: incoming queue -->
+      <div class="receive-left">
+        <div class="receive-section-label">Incoming queue</div>
+        <div class="receive-queue" id="receive-queue">
+          <div class="receive-empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0018 9h-1.26A8 8 0 103 16.29"/></svg>
+            <p>No incoming transfers</p>
+            <small>Transfers sent to you will appear here</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: transfer detail -->
+      <div class="receive-right" id="receive-detail">
+        <div class="receive-detail-empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 13h6M9 17h4"/></svg>
+          <p>Select a transfer</p>
+          <small>Click an item in the queue to review it</small>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
 <!-- Text modal (TALUS-109) -->
 <div class="modal-overlay" id="text-modal">
   <div class="modal">
