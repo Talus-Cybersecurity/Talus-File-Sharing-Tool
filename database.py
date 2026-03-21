@@ -45,15 +45,43 @@ class Database:
                 upload_timestamp TIMESTAMP,
                 file_size TEXT,
                 file_name TEXT,
-                FOREIGN KEY (log_id) REFERENCES AccessLog(log_id),
+                FOREIGN KEY (log_id) REFERENCES "AccessLog"(log_id),
                 FOREIGN KEY (owner_id) REFERENCES "User"(user_id)
             )
         """)
+
+    def create_filepolicy_table(self):
+        self.cur.execute("""
+            CREATE TABLE IF NOT EXISTS "FilePolicy" (
+                policy_id TEXT PRIMARY KEY,
+                receiver_id TEXT,
+                file_id TEXT,
+                ip_address TEXT,
+                access_count INTEGER,
+                active_permissions BOOLEAN,
+                device_verification BOOLEAN,
+                location TEXT,
+                account_info TEXT,  
+                watermark TEXT,
+                data_range TEXT,
+                time TIMESTAMP,
+                biometrics TEXT,       
+                FOREIGN KEY (receiver_id) REFERENCES "User"(user_id),
+                FOREIGN KEY (file_id) REFERENCES "File"(file_id)
+            )
+        """)
+    def delete_all_tables(self):
+        self.cur.execute("""DROP TABLE IF EXISTS "FilePolicy" CASCADE;""")
+        self.cur.execute("""DROP TABLE IF EXISTS "File" CASCADE;""")
+        self.cur.execute("""DROP TABLE IF EXISTS "AccessLog" CASCADE;""")
+        self.cur.execute("""DROP TABLE IF EXISTS "User" CASCADE;""")
+        self.con.commit()
 
     def run(self):
         self.create_user_table()
         self.create_accesslog_table()
         self.create_file_table()
+        self.create_filepolicy_table()
         self.con.commit()
         self.con.close()
 
