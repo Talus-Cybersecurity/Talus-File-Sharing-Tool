@@ -1,16 +1,21 @@
 import psycopg2
+import os
 from Cryptography import hash_password
+from dotenv import load_dotenv
+load_dotenv()
 
 class Database:
     def __init__(self): 
         self.con = psycopg2.connect(
-            host="localhost",
-            database="talus_db",
-            user="michelle",
-            password="1234"
+            host=os.getenv("DB_HOST"),
+            database=os.getenv("DB_NAME"),
+            user=os.getenv("DB_USER"),
+            password=os.getenv("DB_PASSWORD"),
+            port=os.getenv("DB_PORT", "5432")
         )
         self.cur = self.con.cursor()
 
+    
     def create_user_table(self):
         self.cur.execute("""
             CREATE TABLE IF NOT EXISTS "User"(
@@ -70,12 +75,16 @@ class Database:
                 FOREIGN KEY (file_id) REFERENCES "File"(file_id)
             )
         """)
+
     def delete_all_tables(self):
         self.cur.execute("""DROP TABLE IF EXISTS "FilePolicy" CASCADE;""")
         self.cur.execute("""DROP TABLE IF EXISTS "File" CASCADE;""")
         self.cur.execute("""DROP TABLE IF EXISTS "AccessLog" CASCADE;""")
         self.cur.execute("""DROP TABLE IF EXISTS "User" CASCADE;""")
         self.con.commit()
+    
+    def insert_registration_info(self): pass
+
 
     def run(self):
         self.create_user_table()
