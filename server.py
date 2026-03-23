@@ -339,5 +339,39 @@ async def client_handler(ws: WebSocketServerProtocol) -> None:
             connected_clients.pop(client_id, None)
             logging.info("Cleaned session for client_id=%s", client_id)
 
+
+async def handle_message(ws: WebSocketServerProtocol, raw_message: str) -> None:
+    try:
+        data = parse_json(raw_message)
+        msg_type = data.get("type")
+
+        if msg_type == "register":
+            await handle_register(ws, data)
+        elif msg_type == "get_server_public_key":
+            await handle_get_server_public_key(ws, data)
+        elif msg_type == "publish_public_key":
+            await handle_publish_public_key(ws, data)
+        elif msg_type == "request_peer_public_key":
+            await handle_request_peer_public_key(ws, data)
+        elif msg_type == "create_session_key":
+            await handle_create_session_key(ws, data)
+        elif msg_type == "upload_package":
+            await handle_upload_package(ws, data)
+        elif msg_type == "request_file_access":
+            await handle_request_file_access(ws, data)
+        else:
+            await send_json(ws, {
+                "type": "error",
+                "message": f"Unknown message type '{msg_type}'"
+            })
+
+    except Exception as exc:
+        logging.exception("Message handling failed")
+        await send_json(ws, {
+            "type": "error",
+            "message": str(exc)
+        })
+
+
 if __name__ == "__main__":
     asyncio.run(main())
