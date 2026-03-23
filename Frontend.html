@@ -514,6 +514,28 @@
   </div>
 </div>
 
+<!-- TALUS-154: Receiver password prompt -->
+<div class="modal-overlay" id="receive-pw-modal">
+  <div class="modal" style="width:400px">
+    <div class="modal-title">🔒 Password Required</div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">This transfer is password protected. Enter the password to continue.</p>
+    <div class="field-group">
+      <div class="field-label">Password</div>
+      <div style="position:relative">
+        <input class="field-input" type="password" id="receive-pw-input" placeholder="Enter password…" onkeydown="if(event.key==='Enter') submitReceivePassword()"/>
+        <button onclick="toggleReceivePwVisibility()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);">
+          <svg id="receive-pw-eye" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+      <div class="login-error" id="receive-pw-error"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeReceivePasswordModal()">Cancel</button>
+      <button class="btn-primary" onclick="submitReceivePassword()">Confirm</button>
+    </div>
+  </div>
+</div>
+
 
 <div class="dropzone-overlay" id="dropzone-overlay">⬇ Drop files to attach</div>
 <div class="toast" id="toast"></div>
@@ -565,6 +587,7 @@
   let selectedReceiveId = null;
   let receiveInitialised = false;
 
+  // Talus-154: Connect UI to server database
   const API_BASE = 'https://your-api-url.com' // Make sure the API database we are using is connected here
 
   async function initReceive() {
@@ -627,34 +650,41 @@ function startPolling() {
         <span class="rq-status ${item.status}">${item.status}</span>
       </div>`).join('');
   }
- 
+
+  // Talus-113: Design authentication/reception check
   function selectReceiveItem(id) {
     selectedReceiveId = id;
     renderReceiveQueue();
     const item = receiveItems.find(i => i.id === id);
-    const fileIcon = f => f.type === 'PDF' ? '📄' : f.type === 'PNG' || f.type === 'JPG' ? '🖼' : f.type === 'DOCX' ? '📝' : '📁';
-    const detail = document.getElementById('receive-detail');
-    detail.innerHTML = `
-      <div class="receive-sender-card">
-        <div class="receive-sender-avatar">${item.initials}</div>
-        <div style="flex:1">
-          <div style="display:flex;align-items:center;gap:8px">
-            <div class="receive-sender-name">${item.sender}</div>
-            ${item.verified
-              ? `<span style="display:inline-flex;align-items:center;gap:4px;background:#e6f9f0;border:1px solid #a3d9bb;color:#1a6b40;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:600;">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-                  Verified
-                </span>`
-              : `<span style="display:inline-flex;align-items:center;gap:4px;background:#fef9c3;border:1px solid #fcd34d;color:#854d0e;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:600;">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                  Unverified
-                </span>`
-            }
+    if (item.passwordRequired && !item.passwordVerified) {
+      openReceivePasswordModal(id);
+      return;
+    }
+    selectedReceiveId = id;
+    renderReceiveQueue();
+      const fileIcon = f => f.type === 'PDF' ? '📄' : f.type === 'PNG' || f.type === 'JPG' ? '🖼' : f.type === 'DOCX' ? '📝' : '📁';
+      const detail = document.getElementById('receive-detail');
+      detail.innerHTML = `
+        <div class="receive-sender-card">
+          <div class="receive-sender-avatar">${item.initials}</div>
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div class="receive-sender-name">${item.sender}</div>
+              ${item.verified
+                ? `<span style="display:inline-flex;align-items:center;gap:4px;background:#e6f9f0;border:1px solid #a3d9bb;color:#1a6b40;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:600;">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                    Verified
+                  </span>`
+                : `<span style="display:inline-flex;align-items:center;gap:4px;background:#fef9c3;border:1px solid #fcd34d;color:#854d0e;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:600;">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    Unverified
+                  </span>`
+              }
+            </div>
+            <div class="receive-sender-time">${item.tag} · ${item.time}</div>
           </div>
-          <div class="receive-sender-time">${item.tag} · ${item.time}</div>
+          <span class="receive-status-pill ${item.status}">${item.status}</span>
         </div>
-        <span class="receive-status-pill ${item.status}">${item.status}</span>
-      </div>
  
       <div style="margin-top:14px;">
         <div class="confirm-items-label">Files included</div>
@@ -722,6 +752,65 @@ function downloadTransfer(id) {
     a.click();
   });
 }
+
+// Talus-177: Receiver Password Prompt
+let pendingPasswordTransferId = null;
+
+function openReceivePasswordModal(id) {
+  pendingPasswordTransferId = id;
+  document.getElementById('receive-pw-input').value = '';
+  document.getElementById('receive-pw-error').textContent = '';
+  document.getElementById('receive-pw-modal').classList.add('open');
+  setTimeout(() => document.getElementById('receive-pw-input').focus(), 50);
+}
+
+function closeReceivePasswordModal() {
+  pendingPasswordTransferId = null;
+  document.getElementById('receive-pw-modal').classList.remove('open');
+}
+
+function toggleReceivePwVisibility() {
+  const input = document.getElementById('receive-pw-input');
+  const eye = document.getElementById('receive-pw-eye');
+  const isHidden = input.type === 'password';
+  input.type = isHidden ? 'text' : 'password';
+  eye.innerHTML = isHidden
+    ? `<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>`
+    : `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
+}
+
+async function submitReceivePassword() {
+  const pw = document.getElementById('receive-pw-input').value;
+  const errEl = document.getElementById('receive-pw-error');
+  if (!pw) { errEl.textContent = 'Please enter a password.'; return; }
+
+  // Hash the password before sending — never send plaintext
+  const msgBuffer = new TextEncoder().encode(pw);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2,'0')).join('');
+
+  try {
+    const res = await fetch(`${API_BASE}/transfers/${pendingPasswordTransferId}/verify-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ passwordHash: hashHex })
+    });
+    if (res.status === 403) { errEl.textContent = 'Invalid password.'; return; }
+    if (!res.ok) throw new Error();
+    receiveItems = receiveItems.map(i =>
+    i.id === pendingPasswordTransferId ? { ...i, passwordVerified: true } : i
+    );
+    closeReceivePasswordModal();
+    selectReceiveItem(pendingPasswordTransferId);
+  } catch {
+    errEl.textContent = 'Could not verify — try again.';
+  }
+}
+
+document.getElementById('receive-pw-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeReceivePasswordModal();
+});
+  
   // TALUS-109: Text upload
   function openTextModal() { document.getElementById('text-modal').classList.add('open'); setTimeout(() => document.getElementById('text-input').focus(), 50); }
   function closeTextModal() { document.getElementById('text-modal').classList.remove('open'); }
