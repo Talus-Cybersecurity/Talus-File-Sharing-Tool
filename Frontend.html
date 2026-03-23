@@ -599,19 +599,56 @@
 
   async function fetchTransfers() {
     try {
-      const res = await fetch(`${API_BASE}/transfers/incoming`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      if (!res.ok) throw new Error(`Server error: ${res.status}`);
+    const res = await fetch(`${API_BASE}/transfers/incoming`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (res.status === 403) {
       const data = await res.json();
-      receiveItems = data.transfers;
-      renderReceiveQueue();
-      updateReceiveBadge();
-    } catch (err) {
-      toastMsg('⚠ Could not load transfers — retrying…');
-      console.error('fetchTransfers error:', err);
+      if (data.reason === 'time_of_day') {
+        showReceiveError(`Access restricted — outside allowed hours (${data.allowedWindow}).`);
+      } else {
+        showReceiveError('Access denied by server.');
+      }
+      return;
     }
+    if (!res.ok) throw new Error(`Server error: ${res.status}`);
+    const data = await res.json();
+    receiveItems = data.transfers;
+    hideReceiveError();
+    renderReceiveQueue();
+    updateReceiveBadge();
+  } catch (err) {
+    toastMsg('⚠ Could not load transfers — retrying…');
+    console.error('fetchTransfers error:', err);
+  }
+}
+
+function showReceiveError(msg) {
+  let el = document.getElementById('receive-error-bar');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'receive-error-bar';
+    el.style.cssText = `
+      background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;
+      font-size:13px;font-weight:600;padding:10px 16px;
+      border-radius:var(--radius-sm);margin-bottom:12px;
+      display:flex;align-items:center;gap:8px;flex-shrink:0;
+    `;
+    const layout = document.querySelector('.receive-layout');
+    layout.insertBefore(el, layout.children[1]);
+  }
+  el.innerHTML = `
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+    ${msg}`;
+  el.style.display = 'flex';
+}
+
+function hideReceiveError() {
+  const el = document.getElementById('receive-error-bar');
+  if (el) el.style.display = 'none';
 }
 
 function startPolling() {
@@ -657,6 +694,11 @@ function startPolling() {
    // Talus-178: View counts
     if (item.maxViews && item.viewCount >= item.maxViews) {
       toastMsg('⚠ Maximum view count reached for this transfer.');
+      return;
+    }
+   // Talus-179: Time of day access
+   if (item.timeRestricted && !item.withinAllowedWindow) {
+      showReceiveError(`Access restricted — "${item.sender}" has limited access to ${item.allowedWindow}.`);
       return;
     }
     if (item.passwordRequired && !item.passwordVerified) {
