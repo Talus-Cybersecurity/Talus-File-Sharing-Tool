@@ -652,13 +652,24 @@ function startPolling() {
   }
 
   // Talus-113: Design authentication/reception check
-  function selectReceiveItem(id) {
-    selectedReceiveId = id;
-    renderReceiveQueue();
+ async function selectReceiveItem(id) {
     const item = receiveItems.find(i => i.id === id);
+   // Talus-178: View counts
+    if (item.maxViews && item.viewCount >= item.maxViews) {
+      toastMsg('⚠ Maximum view count reached for this transfer.');
+      return;
+    }
     if (item.passwordRequired && !item.passwordVerified) {
       openReceivePasswordModal(id);
       return;
+    }
+    try {
+      await fetch(`${API_BASE}/transfers/${id}/view`, { method: 'POST' });
+      receiveItems = receiveItems.map(i =>
+        i.id === id ? { ...i, viewCount: (i.viewCount || 0) + 1 } : i
+      );
+    } catch {
+      toastMsg('⚠ Could not log view — proceeding anyway.');
     }
     selectedReceiveId = id;
     renderReceiveQueue();
@@ -686,6 +697,15 @@ function startPolling() {
           <span class="receive-status-pill ${item.status}">${item.status}</span>
         </div>
  
+      <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;">
+        <div class="confirm-items-label">Files included</div>
+        ${item.maxViews
+          ? `<span style="font-family:'Space Mono',monospace;font-size:11px;color:${item.viewCount >= item.maxViews ? '#991b1b' : 'var(--text-muted)'};">
+              ${item.viewCount} / ${item.maxViews} views used
+            </span>`
+          : `<span style="font-family:'Space Mono',monospace;font-size:11px;color:var(--text-muted);">Unlimited views</span>`
+        }
+      </div>
       <div style="margin-top:14px;">
         <div class="confirm-items-label">Files included</div>
         <div class="receive-files-list">
