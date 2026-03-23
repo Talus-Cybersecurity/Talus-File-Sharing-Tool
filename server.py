@@ -6,11 +6,20 @@ import json
 import websockets
 from websockets.server import WebSocketServerProtocol
 
+from typing import Any, Dict, Optional
 
+import secrets
+import ssl
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding, rsa
+from cryptography.fernet import Fernet
 
 HOST = "0.0.0.0"
 PORT = 8765
-
+CERT_FILE = "cert.pem"
+KEY_FILE = "key.pem"
+SERVER_PRIVATE_KEY_FILE = "server_private.pem"
+SERVER_PUBLIC_KEY_FILE = "server_public.pem"
 
 @dataclass
 class ClientSession:
@@ -32,9 +41,65 @@ class FilePackage:
     delivered: bool = False
 
 
-
 connected_clients: Dict[str, ClientSession] = {}
+public_keys: Dict[str, str] = {}
+sender_session_keys: Dict[str, bytes] = {}
+receiver_session_keys: Dict[str, bytes] = {}
+packages: Dict[str, FilePackage] = {}
 
+
+def generate_rsa_keypair_if_missing() -> None:
+    private_path = Path(SERVER_PRIVATE_KEY_FILE)
+    public_path = Path(SERVER_PUBLIC_KEY_FILE)
+
+    if private_path.exists() and public_path.exists():
+        logging.info("Server RSA keypair already exists.")
+        return
+
+    logging.info("Generating server RSA keypair...")
+    private_key = rsa.generate_private_key(
+        public_exponent=65537,
+        key_size=2048
+    )
+
+    private_pem = private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption()
+    )
+
+    public_pem = private_key.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo
+    )
+
+    private_path.write_bytes(private_pem)
+    public_path.write_bytes(public_pem)
+
+    logging.info("Server RSA keypair generated.")
+
+
+def load_server_private_key():
+    return serialization.load_pem_private_key(
+        Path(SERVER_PRIVATE_KEY_FILE).read_bytes(),
+        password=None
+    )
+
+def load_server_public_key_pem() -> str:
+    return Path(SERVER_PUBLIC_KEY_FILE).read_text(encoding="utf-8")
+
+
+
+def generate_symmetric_key() -> bytes:
+    return Fernet.generate_key()
+
+
+def fernet_encrypt(key: bytes, plaintext: bytes) -> bytes:
+    return Fernet(key).encrypt(plaintext)
+
+
+def fernet_decrypt(key: bytes, ciphertext: bytes) -> bytes:
+    return Fernet(key).decrypt(ciphertext)
 
 
 #Message hander
@@ -62,6 +127,14 @@ async def handle_register(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> 
     })
 
     
+
+async def handle_get_server_public_key(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
+    await send_json(ws, {
+        "type": "server_public_key",
+        "public_key_pem": load_server_public_key_pem()
+    })
+
+
 async def handle_upload_package(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
     sender_id = data["sender_id"]
     receiver_id = data["receiver_id"]
