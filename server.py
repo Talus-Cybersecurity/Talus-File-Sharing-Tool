@@ -128,9 +128,21 @@ def generate_symmetric_key() -> bytes:
 def fernet_encrypt(key: bytes, plaintext: bytes) -> bytes:
     return Fernet(key).encrypt(plaintext)
 
-
 def fernet_decrypt(key: bytes, ciphertext: bytes) -> bytes:
     return Fernet(key).decrypt(ciphertext)
+
+
+async def send_json(ws: WebSocketServerProtocol, message: Dict[str, Any]) -> None:
+    await ws.send(json.dumps(message))
+
+
+def now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def parse_json(raw: str) -> Dict[str, Any]:
+    return json.loads(raw)
+
 
 def encode_b64(data: bytes) -> str:
     return base64.b64encode(data).decode("utf-8")
@@ -410,6 +422,11 @@ async def handle_message(ws: WebSocketServerProtocol, raw_message: str) -> None:
             "message": str(exc)
         })
 
+
+def build_ssl_context() -> ssl.SSLContext:
+    ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ssl_context.load_cert_chain(CERT_FILE, KEY_FILE)
+    return ssl_context
 async def main() -> None:
     generate_rsa_keypair_if_missing()
 
