@@ -1,5 +1,6 @@
 import asyncios
-
+import logging
+import os
 import base64
 import json
 import websockets
@@ -19,7 +20,18 @@ class ClientSession:
     public_key_pem: Optional[str] = None
     connected_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
+@dataclass
+class FilePackage:
+    package_id: str
+    sender_id: str
+    receiver_id: str
+    encrypted_file_b64: str
+    encrypted_requirements_b64: Optional[str] = None
+    parsed_requirements: Optional[Dict[str, Any]] = None
+    uploaded_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    delivered: bool = False
 
+    
 
 connected_clients: Dict[str, ClientSession] = {}
 
@@ -38,9 +50,9 @@ async def handle_register(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> 
         public_key_pem=public_key_pem
     )
     if public_key_pem:
-        #public_keys[client_id] = public_key_pem
+        public_keys[client_id] = public_key_pem
 
-    #logging.info("Registered client_id=%s role=%s", client_id, role)
+    logging.info("Registered client_id=%s role=%s", client_id, role)
 
     await send_json(ws, {
         "type": "register_ack",
