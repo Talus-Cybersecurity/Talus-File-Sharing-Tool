@@ -31,7 +31,7 @@ class FilePackage:
     uploaded_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     delivered: bool = False
 
-    
+
 
 connected_clients: Dict[str, ClientSession] = {}
 
@@ -59,6 +59,40 @@ async def handle_register(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> 
         "client_id": client_id,
         "role": role,
         "server_time": now_iso()
+    })
+
+    
+async def handle_upload_package(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
+    sender_id = data["sender_id"]
+    receiver_id = data["receiver_id"]
+    encrypted_file_b64 = data["encrypted_file_b64"]
+    encrypted_requirements_b64 = data["encrypted_requirements_b64"]
+
+    # Requirements are encrypted for the server per assignment design.
+    decrypted_requirements = rsa_decrypt_with_server_private_key(
+        decode_b64(encrypted_requirements_b64)
+    )
+
+    requirements = json.loads(decrypted_requirements.decode("utf-8"))
+
+    package_id = str(uuid.uuid4())
+    packages[package_id] = FilePackage(
+        package_id=package_id,
+        sender_id=sender_id,
+        receiver_id=receiver_id,
+        encrypted_file_b64=encrypted_file_b64,
+        encrypted_requirements_b64=encrypted_requirements_b64,
+        parsed_requirements=requirements
+    )
+
+    logging.info(
+        "Stored package_id=%s sender=%s receiver=%s",
+        package_id, sender_id, receiver_id
+    )
+
+    await send_json(ws, {
+        "type": "upload_package_ack",
+        "package_id": package_id
     })
 
 
