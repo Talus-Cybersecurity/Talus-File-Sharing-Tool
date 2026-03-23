@@ -1,10 +1,15 @@
-import asyncios
+import asyncio
 import logging
 import os
 import base64
 import json
 import websockets
 from websockets.server import WebSocketServerProtocol
+
+import uuid
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from pathlib import Path
 
 from typing import Any, Dict, Optional
 
@@ -88,7 +93,28 @@ def load_server_private_key():
 def load_server_public_key_pem() -> str:
     return Path(SERVER_PUBLIC_KEY_FILE).read_text(encoding="utf-8")
 
+def rsa_encrypt_with_public_key(public_key_pem: str, plaintext: bytes) -> bytes:
+    public_key = serialization.load_pem_public_key(public_key_pem.encode("utf-8"))
+    return public_key.encrypt(
+        plaintext,
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+        )
+    )
 
+
+def rsa_decrypt_with_server_private_key(ciphertext: bytes) -> bytes:
+    private_key = load_server_private_key()
+    return private_key.decrypt(
+        ciphertext,
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+        )
+    )
 
 def generate_symmetric_key() -> bytes:
     return Fernet.generate_key()
@@ -100,6 +126,12 @@ def fernet_encrypt(key: bytes, plaintext: bytes) -> bytes:
 
 def fernet_decrypt(key: bytes, ciphertext: bytes) -> bytes:
     return Fernet(key).decrypt(ciphertext)
+
+def encode_b64(data: bytes) -> str:
+    return base64.b64encode(data).decode("utf-8")
+
+def decode_b64(data: str) -> bytes:
+    return base64.b64decode(data.encode("utf-8"))
 
 
 #Message hander
@@ -134,6 +166,32 @@ async def handle_get_server_public_key(ws: WebSocketServerProtocol, data: Dict[s
         "public_key_pem": load_server_public_key_pem()
     })
 
+
+async def handle_create_session_key(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
+    client_id = data["client_id"]
+
+    if client_id not in public_keys:
+        await send_json(ws, {
+            "type": "error",
+            "message": f"No public key registered for '{client_id}'"
+        })
+        return
+
+    symmetric_key = generate_symmetric_key()
+    encrypted_key = rsa_encrypt_with_public_key(public_keys[client_id], symmetric_key)
+
+    role = connected_clients[client_id].role if client_id in connected_clients else "unknown"
+
+    if role == "sender":
+        sender_session_keys[client_id] = symmetric_key
+    elif role == "receiver":
+        receiver_session_keys[client_id] = symmetric_key
+
+    await send_json(ws, {
+        "type": "session_key_created",
+        "client_id": client_id,
+        "encrypted_session_key_b64": encode_b64(encrypted_key)
+    })
 
 async def handle_upload_package(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
     sender_id = data["sender_id"]
