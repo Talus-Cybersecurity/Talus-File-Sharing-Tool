@@ -1111,6 +1111,15 @@ document.getElementById('receive-pw-modal').addEventListener('click', function(e
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
   }
+  // TALUS-180: Auto-deleting encrypted data
+  // Auto-delete transfer data on app close
+  window.addEventListener('beforeunload', () => {
+    receiveItems = [];
+    selectedReceiveId = null;
+    receiveInitialised = false;
+    // Notify server to clean up session data
+    navigator.sendBeacon(`${API_BASE}/transfers/session/clear`);
+  });
 </script>
 </body>
 </html>
