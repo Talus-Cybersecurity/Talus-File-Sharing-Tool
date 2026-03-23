@@ -318,7 +318,26 @@ async def handle_request_file_access(ws: WebSocketServerProtocol, data: Dict[str
             "encrypted_error_b64": encode_b64(encrypted_error)
         })
 
+async def client_handler(ws: WebSocketServerProtocol) -> None:
+    logging.info("Client connected")
 
+    try:
+        async for message in ws:
+            await handle_message(ws, message)
+
+    except websockets.ConnectionClosed:
+        logging.info("Client disconnected")
+
+    finally:
+        # Clean up disconnected sessions
+        disconnected_ids = [
+            client_id
+            for client_id, session in connected_clients.items()
+            if session.websocket == ws
+        ]
+        for client_id in disconnected_ids:
+            connected_clients.pop(client_id, None)
+            logging.info("Cleaned session for client_id=%s", client_id)
 
 if __name__ == "__main__":
     asyncio.run(main())
