@@ -172,6 +172,39 @@ async def handle_get_server_public_key(ws: WebSocketServerProtocol, data: Dict[s
     })
 
 
+async def handle_publish_public_key(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
+    client_id = data["client_id"]
+    public_key_pem = data["public_key_pem"]
+
+    public_keys[client_id] = public_key_pem
+
+    if client_id in connected_clients:
+        connected_clients[client_id].public_key_pem = public_key_pem
+
+    await send_json(ws, {
+        "type": "publish_public_key_ack",
+        "client_id": client_id
+    })
+
+
+async def handle_request_peer_public_key(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
+    peer_id = data["peer_id"]
+    pem = public_keys.get(peer_id)
+
+    if not pem:
+        await send_json(ws, {
+            "type": "error",
+            "message": f"No public key found for peer '{peer_id}'"
+        })
+        return
+
+    await send_json(ws, {
+        "type": "peer_public_key",
+        "peer_id": peer_id,
+        "public_key_pem": pem
+    })
+
+
 async def handle_create_session_key(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
     client_id = data["client_id"]
 
