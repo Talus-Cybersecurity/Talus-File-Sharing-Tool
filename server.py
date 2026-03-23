@@ -227,5 +227,98 @@ async def handle_upload_package(ws: WebSocketServerProtocol, data: Dict[str, Any
     })
 
 
-    if __name__ == "__main__":
+
+def validate_receiver_against_requirements(
+    receiver_metadata: Dict[str, Any],
+    requirements: Dict[str, Any]
+) -> tuple[bool, Optional[str]]:
+    for field_name, expected_value in requirements.items():
+        if field_name not in receiver_metadata:
+            return False, field_name
+
+        actual_value = receiver_metadata[field_name]
+
+        if isinstance(expected_value, dict):
+            # Example structure:
+            # "hour_range": {"min": 8, "max": 17}
+            if "min" in expected_value and actual_value < expected_value["min"]:
+                return False, field_name
+            if "max" in expected_value and actual_value > expected_value["max"]:
+                return False, field_name
+        else:
+            if actual_value != expected_value:
+                return False, field_name
+
+    return True, None
+
+async def handle_request_file_access(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
+    receiver_id = data["receiver_id"]
+    package_id = data["package_id"]
+    encrypted_receiver_metadata_b64 = data["encrypted_receiver_metadata_b64"]
+
+    package = packages.get(package_id)
+    if not package:
+        await send_json(ws, {
+            "type": "error",
+            "message": f"Unknown package '{package_id}'"
+        })
+        return
+
+    if package.receiver_id != receiver_id:
+        await send_json(ws, {
+            "type": "error",
+            "message": "Receiver is not authorized for this package"
+        })
+        return
+
+    if receiver_id not in receiver_session_keys:
+        await send_json(ws, {
+            "type": "error",
+            "message": "No server-receiver session key found"
+        })
+        return
+
+    session_key = receiver_session_keys[receiver_id]
+
+    receiver_metadata = json.loads(
+        fernet_decrypt(session_key, decode_b64(encrypted_receiver_metadata_b64)).decode("utf-8")
+    )
+
+    allowed, failed_field = validate_receiver_against_requirements(
+        receiver_metadata,
+        package.parsed_requirements or {}
+    )
+
+    logging.info(
+        "Access request package_id=%s receiver_id=%s allowed=%s failed_field=%s",
+        package_id, receiver_id, allowed, failed_field
+    )
+
+    if allowed:
+        await send_json(ws, {
+            "type": "authorized_file_delivery",
+            "package_id": package_id,
+            "encrypted_file_b64": package.encrypted_file_b64
+        })
+        package.delivered = True
+    else:
+        error_payload = {
+            "status": "denied",
+            "failed_field": failed_field,
+            "message": "Receiver metadata did not satisfy sender requirements."
+        }
+
+        encrypted_error = fernet_encrypt(
+            session_key,
+            json.dumps(error_payload).encode("utf-8")
+        )
+
+        await send_json(ws, {
+            "type": "authorization_denied",
+            "encrypted_error_b64": encode_b64(encrypted_error)
+        })
+
+
+
+if __name__ == "__main__":
     asyncio.run(main())
