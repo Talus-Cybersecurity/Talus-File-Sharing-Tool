@@ -26,6 +26,11 @@ KEY_FILE = "key.pem"
 SERVER_PRIVATE_KEY_FILE = "server_private.pem"
 SERVER_PUBLIC_KEY_FILE = "server_public.pem"
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+
 @dataclass
 class ClientSession:
     websocket: WebSocketServerProtocol
@@ -372,6 +377,18 @@ async def handle_message(ws: WebSocketServerProtocol, raw_message: str) -> None:
             "message": str(exc)
         })
 
+async def main() -> None:
+    generate_rsa_keypair_if_missing()
 
+    ssl_context = build_ssl_context()
+
+    async with websockets.serve(
+        client_handler,
+        HOST,
+        PORT,
+        ssl=ssl_context
+    ):
+        logging.info("Secure websocket server running on wss://%s:%s", HOST, PORT)
+        await asyncio.Future()
 if __name__ == "__main__":
     asyncio.run(main())
