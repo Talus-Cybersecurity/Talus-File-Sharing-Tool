@@ -1,10 +1,10 @@
 import psycopg2
 import os
-from Cryptography import hash_password
 from dotenv import load_dotenv
 load_dotenv()
 
-class Database:
+# Manages connection and table creation
+class Schema:
     def __init__(self): 
         self.con = psycopg2.connect(
             host=os.getenv("DB_HOST"),
@@ -15,7 +15,6 @@ class Database:
         )
         self.cur = self.con.cursor()
 
-    
     def create_user_table(self):
         self.cur.execute("""
             CREATE TABLE IF NOT EXISTS "User"(
@@ -50,6 +49,7 @@ class Database:
                 upload_timestamp TIMESTAMP,
                 file_size TEXT,
                 file_name TEXT,
+                file_path TEXT,
                 FOREIGN KEY (log_id) REFERENCES "AccessLog"(log_id),
                 FOREIGN KEY (owner_id) REFERENCES "User"(user_id)
             )
@@ -82,9 +82,6 @@ class Database:
         self.cur.execute("""DROP TABLE IF EXISTS "AccessLog" CASCADE;""")
         self.cur.execute("""DROP TABLE IF EXISTS "User" CASCADE;""")
         self.con.commit()
-    
-    def insert_registration_info(self): pass
-
 
     def run(self):
         self.create_user_table()
@@ -95,5 +92,5 @@ class Database:
         self.con.close()
 
 if __name__ == "__main__":
-    storage = Database()
+    storage = Schema()
     storage.run()
