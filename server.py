@@ -19,6 +19,8 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.fernet import Fernet
 
+from backend.schema import Schema
+
 HOST = "0.0.0.0"
 PORT = 8765
 CERT_FILE = "cert.pem"
@@ -56,7 +58,6 @@ public_keys: Dict[str, str] = {}
 sender_session_keys: Dict[str, bytes] = {}
 receiver_session_keys: Dict[str, bytes] = {}
 packages: Dict[str, FilePackage] = {}
-
 
 def generate_rsa_keypair_if_missing() -> None:
     private_path = Path(SERVER_PRIVATE_KEY_FILE)
@@ -428,6 +429,9 @@ def build_ssl_context() -> ssl.SSLContext:
     ssl_context.load_cert_chain(CERT_FILE, KEY_FILE)
     return ssl_context
 async def main() -> None:
+    schema = Schema()
+    schema.run()
+
     generate_rsa_keypair_if_missing()
 
     ssl_context = build_ssl_context()
