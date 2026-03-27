@@ -206,7 +206,6 @@ def hash_password(password: str) -> str:
         return None
 
 
-
 def verify_password(password: str, stored_hash: str) -> bool:
     """
     Verifies a plaintext password against a stored Argon2id hash.

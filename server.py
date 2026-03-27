@@ -20,6 +20,8 @@ from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.fernet import Fernet
 
 from backend.schema import Schema
+from backend.database import Database
+from Cryptography import hash_password
 
 HOST = "0.0.0.0"
 PORT = 8765
@@ -121,10 +123,35 @@ def rsa_decrypt_with_server_private_key(ciphertext: bytes) -> bytes:
             label=None
         )
     )
+# User account registration logic starts here
+# ws = who to respond to
+# data = data sent from client 
+db = Database()
+async def handle_create_account(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None: 
+    user_id = str(uuid.uuid4())
+    username = data["username"]
+    password = data["password"]
+    tag_id = data["tag_id"]
+
+    # If password fails to hash, this function prevents the database from 
+    # storing the password as "None"
+    new_hash_pw = hash_password(password)
+    if new_hash_pw is None:
+        await send_json(ws, {
+            "type": "error", 
+            "message": "Password hashing failed"
+        })
+        return
+    # Insert user's username, password, user_id, and tag_id
+    db.insert_user(user_id, username, new_hash_pw, tag_id)
+    
+    await send_json(ws, {
+        "type": "create_account_ack",
+        "user_id": user_id
+    })
 
 def generate_symmetric_key() -> bytes:
     return Fernet.generate_key()
-
 
 def fernet_encrypt(key: bytes, plaintext: bytes) -> bytes:
     return Fernet(key).encrypt(plaintext)
@@ -176,7 +203,6 @@ async def handle_register(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> 
         "server_time": now_iso()
     })
 
-    
 
 async def handle_get_server_public_key(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
     await send_json(ws, {
@@ -410,11 +436,14 @@ async def handle_message(ws: WebSocketServerProtocol, raw_message: str) -> None:
             await handle_upload_package(ws, data)
         elif msg_type == "request_file_access":
             await handle_request_file_access(ws, data)
+        elif msg_type == "create_account":
+            await handle_create_account(ws, data)
         else:
             await send_json(ws, {
                 "type": "error",
                 "message": f"Unknown message type '{msg_type}'"
             })
+
 
     except Exception as exc:
         logging.exception("Message handling failed")
@@ -423,11 +452,11 @@ async def handle_message(ws: WebSocketServerProtocol, raw_message: str) -> None:
             "message": str(exc)
         })
 
-
 def build_ssl_context() -> ssl.SSLContext:
     ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     ssl_context.load_cert_chain(CERT_FILE, KEY_FILE)
     return ssl_context
+
 async def main() -> None:
     schema = Schema()
     schema.run()
