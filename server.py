@@ -21,7 +21,7 @@ from cryptography.fernet import Fernet
 
 from backend.schema import Schema
 from backend.database import Database
-from Cryptography import hash_password
+from Cryptography import hash_password, verify_password
 
 HOST = "0.0.0.0"
 PORT = 8765
@@ -150,6 +150,20 @@ async def handle_create_account(ws: WebSocketServerProtocol, data: Dict[str, Any
         "user_id": user_id
     })
 
+# async def check_login_credentials(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None: 
+#     username = data["username"]
+#     password = data["password"]
+#     result = db.check_if_user_exists(username)
+#     if result is False:
+#         pass
+#     else: 
+#     if result is not None:
+#         await send_json(ws, {
+#             "type": "check_login_ack"
+
+
+#         })
+
 def generate_symmetric_key() -> bytes:
     return Fernet.generate_key()
 
@@ -275,23 +289,37 @@ async def handle_upload_package(ws: WebSocketServerProtocol, data: Dict[str, Any
     receiver_id = data["receiver_id"]
     encrypted_file_b64 = data["encrypted_file_b64"]
     encrypted_requirements_b64 = data["encrypted_requirements_b64"]
+    upload_time = datetime.now(timezone.utc)
 
     # Requirements are encrypted for the server per assignment design.
     decrypted_requirements = rsa_decrypt_with_server_private_key(
         decode_b64(encrypted_requirements_b64)
     )
-
     requirements = json.loads(decrypted_requirements.decode("utf-8"))
-
     package_id = str(uuid.uuid4())
+    log_id= str(uuid.uuid4())
+
     packages[package_id] = FilePackage(
         package_id=package_id,
         sender_id=sender_id,
         receiver_id=receiver_id,
         encrypted_file_b64=encrypted_file_b64,
         encrypted_requirements_b64=encrypted_requirements_b64,
-        parsed_requirements=requirements
+        parsed_requirements=requirements,
+        uploaded_at=upload_time
     )
+
+    # Add file to database
+    db.insert_file(
+        file_id=package_id,
+        log_id=None,
+        owner_id=sender_id,
+        file_type=None,
+        upload_timestamp=datetime.now(timezone.utc),
+        file_size=None,
+        file_name=None,
+        file_path=encrypted_file_b64
+        )
 
     logging.info(
         "Stored package_id=%s sender=%s receiver=%s",
@@ -302,7 +330,6 @@ async def handle_upload_package(ws: WebSocketServerProtocol, data: Dict[str, Any
         "type": "upload_package_ack",
         "package_id": package_id
     })
-
 
 
 def validate_receiver_against_requirements(

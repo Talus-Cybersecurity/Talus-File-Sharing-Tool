@@ -20,13 +20,21 @@ class Database:
     #         SELECT username
 
     #     """)
-    def retrieve_password(self, username):
+    # def get_password(self, username):
+    #     self.schema.cur.execute("""
+    #         SELECT password 
+    #         FROM "User" 
+    #         WHERE username = %s
+    #      """, (username, ))
+    #     return self.schema.cur.fetchone()   # returns password
+
+
+    def check_if_user_exists(self, username):
         self.schema.cur.execute("""
-            SELECT password 
-            FROM "User" 
-            WHERE username = %s
-         """, (username, ))
-        return self.schema.cur.fetchone()   # returns password
+            SELECT username FROM "User"
+            WHERE username = %s""", (username, ))
+        return self.schema.cur.fetchone() is not None
+        
     
     # Insert user account information into the database when a new user registers
     def insert_user(self, user_id, username, password, tag_id):
