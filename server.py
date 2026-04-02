@@ -182,8 +182,23 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def parse_json(raw: str) -> Dict[str, Any]:
-    return json.loads(raw)
+def parse_packet(raw: str) -> tuple[str, Dict[str, Any]]: # validates envelope and returns packets as a tuple
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Malformed JSON: {exc}") from exc
+    if not isinstance(data, dict):
+        raise ValueError("Packet must be a JSON object.")
+    msg_type = data.get("type")
+    if not msg_type or not isinstance(msg_type, str):
+        raise ValueError("Packet missing required string field 'type'.")
+    if "payload" in data:
+        payload = data["payload"]
+        if not isinstance(payload, dict):
+            raise ValueError("Field 'payload' must be a JSON object.")
+    else:
+        payload = {k: v for k, v in data.items() if k != "type"}
+    return msg_type, payload
 
 
 def encode_b64(data: bytes) -> str:
@@ -446,8 +461,7 @@ async def client_handler(ws: WebSocketServerProtocol) -> None:
 
 async def handle_message(ws: WebSocketServerProtocol, raw_message: str) -> None:
     try:
-        data = parse_json(raw_message)
-        msg_type = data.get("type")
+        msg_type, data = parse_packet(raw_message)
 
         if msg_type == "register":
             await handle_register(ws, data)
@@ -472,12 +486,11 @@ async def handle_message(ws: WebSocketServerProtocol, raw_message: str) -> None:
             })
 
 
+    except ValueError as ve:
+        await send_json(ws, {"type": "error", "message": str(ve)})
     except Exception as exc:
         logging.exception("Message handling failed")
-        await send_json(ws, {
-            "type": "error",
-            "message": str(exc)
-        })
+        await send_json(ws, {"type": "error", "message": str(exc)})
 
 def build_ssl_context() -> ssl.SSLContext:
     ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
