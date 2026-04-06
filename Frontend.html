@@ -718,29 +718,40 @@ async function doLogin() {
   btn.textContent = 'Signing in…'; btn.disabled = true;
 
   try {
-    // Open a temporary WS just for login, then switch to persistent connection
+    // Open a short-lived WS just for login
     const tempWs = new WebSocket(WS_URL);
-    await new Promise((res, rej) => { tempWs.onopen = res; tempWs.onerror = () => rej(new Error('Cannot reach server')); });
 
+    // ── Connection failure ────────────────────────────────────────────
+    await new Promise((res, rej) => {
+      tempWs.onopen  = res;
+      tempWs.onerror = () => rej(new Error('NO_SERVER'));
+    });
+
+    // ── Send credentials, wait for response or timeout ────────────────
     const reply = await new Promise((res, rej) => {
-      const t = setTimeout(() => rej(new Error('Login timeout')), 8000);
+      const t = setTimeout(() => rej(new Error('TIMEOUT')), 8000);
       tempWs.onmessage = e => { clearTimeout(t); res(JSON.parse(e.data)); };
-      tempWs.onerror = () => rej(new Error('Connection error'));
+      tempWs.onerror   = () => { clearTimeout(t); rej(new Error('CONNECTION_ERROR')); };
       tempWs.send(JSON.stringify({ type: 'login', username, password }));
     });
     tempWs.close();
 
+    // ── Success ───────────────────────────────────────────────────────
     if (reply.type === 'login_ack') {
       _afterLogin(username, reply.user_id);
-    } else {
-      errEl.textContent = reply.message || 'Invalid username or password.';
+      return;
     }
+
+    // ── Server returned explicit failure ──────────────────────────────
+    errEl.textContent = reply.message || 'Invalid username or password.';
+
   } catch (err) {
-    // Server not available — allow UI demo login with basic validation
-    if (password.length >= 3) {
-      _afterLogin(username, null);
+    if (err.message === 'TIMEOUT') {
+      errEl.textContent = 'Server timed out — please try again.';
+    } else if (err.message === 'NO_SERVER') {
+      errEl.textContent = 'Cannot reach server. Is it running?';
     } else {
-      errEl.textContent = 'Invalid username or password.';
+      errEl.textContent = 'Connection error — please try again.';
     }
   } finally {
     btn.textContent = 'Sign In'; btn.disabled = false;
@@ -809,29 +820,42 @@ async function doRegister() {
   try {
     // create_account uses a short-lived connection (user isn't logged in yet)
     const tempWs = new WebSocket(WS_URL);
-    await new Promise((res, rej) => { tempWs.onopen = res; tempWs.onerror = () => rej(new Error('Cannot reach server')); });
+
+    // ── Connection failure ────────────────────────────────────────────
+    await new Promise((res, rej) => {
+      tempWs.onopen  = res;
+      tempWs.onerror = () => rej(new Error('NO_SERVER'));
+    });
+
+    // ── Send credentials, wait for response or timeout ────────────────
     const reply = await new Promise((res, rej) => {
-      const t = setTimeout(() => rej(new Error('timeout')), 8000);
+      const t = setTimeout(() => rej(new Error('TIMEOUT')), 8000);
       tempWs.onmessage = e => { clearTimeout(t); res(JSON.parse(e.data)); };
-      tempWs.onerror = () => rej(new Error('Connection error'));
+      tempWs.onerror   = () => { clearTimeout(t); rej(new Error('CONNECTION_ERROR')); };
       tempWs.send(JSON.stringify({ type: 'create_account', username, password, tag_id: tag }));
     });
     tempWs.close();
 
+    // ── Success ───────────────────────────────────────────────────────
     if (reply.type === 'create_account_ack') {
       document.getElementById('register-form-body').style.display = 'none';
       document.getElementById('register-success-body').style.display = '';
       document.getElementById('register-success-msg').textContent =
-        `Welcome, ${username}#${tag}! You can now sign in with your new account.`;
-    } else {
-      errEl.textContent = reply.message || 'Registration failed — please try again.';
+        `Welcome, ${username}#${tag}! You can now sign in.`;
+      return;
     }
+
+    // ── Server returned explicit failure ──────────────────────────────
+    errEl.textContent = reply.message || 'Registration failed — please try again.';
+
   } catch (err) {
-    // Server not reachable — queue locally for demo
-    document.getElementById('register-form-body').style.display = 'none';
-    document.getElementById('register-success-body').style.display = '';
-    document.getElementById('register-success-msg').textContent =
-      `Account for ${username}#${tag} queued. Connect to the server to complete registration.`;
+    if (err.message === 'TIMEOUT') {
+      errEl.textContent = 'Server timed out — please try again.';
+    } else if (err.message === 'NO_SERVER') {
+      errEl.textContent = 'Cannot reach server. Is it running?';
+    } else {
+      errEl.textContent = 'Connection error — please try again.';
+    }
   } finally {
     btn.textContent = 'Create Account'; btn.disabled = false;
   }
