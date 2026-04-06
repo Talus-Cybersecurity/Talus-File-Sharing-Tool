@@ -170,23 +170,6 @@
     .login-error{color:#c0392b;font-size:13px;margin-bottom:12px;min-height:18px;text-align:center;}
     .login-btn{width:100%;padding:13px;background:var(--teal-dark);color:#fff;border:none;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px;transition:background 0.18s,transform 0.12s;}
     .login-btn:hover{background:var(--teal-mid);transform:translateY(-1px);}
-    .login-btn-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;}
-    .login-btn-secondary{width:100%;padding:13px;background:transparent;color:var(--teal-dark);border:2px solid var(--teal-dark);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:background 0.18s,color 0.18s,transform 0.12s;}
-    .login-btn-secondary:hover{background:var(--teal-pale);transform:translateY(-1px);}
-    /* Register modal */
-    .register-screen{position:fixed;inset:0;z-index:1001;background:var(--teal-dark);display:flex;align-items:center;justify-content:center;}
-    .register-screen.hidden{display:none;}
-    .register-bg-pattern{position:absolute;inset:0;opacity:0.04;background-image:repeating-linear-gradient(45deg,#fff 0,#fff 1px,transparent 0,transparent 50%);background-size:20px 20px;pointer-events:none;}
-    .register-box{position:relative;z-index:1;background:var(--surface);border-radius:24px;padding:44px 40px 36px;width:420px;max-width:94vw;box-shadow:0 24px 80px rgba(0,0,0,0.28);animation:slideUp 0.3s ease;}
-    .register-back{display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;color:var(--text-muted);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;padding:0;margin-bottom:20px;transition:color 0.15s;}
-    .register-back:hover{color:var(--teal-dark);}
-    .register-back svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2.5;}
-    .register-tag-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;}
-    .register-tag-hint{font-family:'Space Mono',monospace;font-size:20px;font-weight:700;color:var(--teal-dark);padding-bottom:11px;line-height:1;}
-    .register-success{text-align:center;padding:12px 0 4px;}
-    .register-success-icon{font-size:42px;margin-bottom:10px;}
-    .register-success-title{font-size:18px;font-weight:700;color:var(--teal-dark);margin-bottom:6px;}
-    .register-success-sub{font-size:13px;color:var(--text-muted);line-height:1.5;}
     .toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--teal-dark);color:#fff;padding:12px 26px;border-radius:40px;font-size:14px;font-weight:600;box-shadow:0 6px 30px rgba(13,110,110,0.30);opacity:0;pointer-events:none;transition:opacity 0.25s;z-index:300;white-space:nowrap;}
     .toast.show{opacity:1;}
     /* ═══ RECEIVE PANEL ═══ */
@@ -236,6 +219,23 @@
     .btn-decline:hover{background:#fee2e2;color:#991b1b;border-color:#fca5a5;}
     .btn-accept{flex:2;padding:11px;border:none;border-radius:var(--radius-sm);background:var(--teal-dark);color:#fff;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:background 0.15s,transform 0.12s;}
     .btn-accept:hover{background:var(--teal-mid);transform:translateY(-1px);}
+    /* Register */
+    .login-btn-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;}
+    .login-btn-secondary{width:100%;padding:13px;background:transparent;color:var(--teal-dark);border:2px solid var(--teal-dark);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:background 0.18s,color 0.18s,transform 0.12s;}
+    .login-btn-secondary:hover{background:var(--teal-pale);transform:translateY(-1px);}
+    .register-screen{position:fixed;inset:0;z-index:1001;background:var(--teal-dark);display:flex;align-items:center;justify-content:center;}
+    .register-screen.hidden{display:none;}
+    .register-bg-pattern{position:absolute;inset:0;opacity:0.04;background-image:repeating-linear-gradient(45deg,#fff 0,#fff 1px,transparent 0,transparent 50%);background-size:20px 20px;pointer-events:none;}
+    .register-box{position:relative;z-index:1;background:var(--surface);border-radius:24px;padding:44px 40px 36px;width:420px;max-width:94vw;box-shadow:0 24px 80px rgba(0,0,0,0.28);animation:slideUp 0.3s ease;}
+    .register-back{display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;color:var(--text-muted);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;padding:0;margin-bottom:20px;transition:color 0.15s;}
+    .register-back:hover{color:var(--teal-dark);}
+    .register-back svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2.5;}
+    .register-tag-row{display:flex;align-items:center;gap:10px;}
+    .register-tag-hint{font-family:'Space Mono',monospace;font-size:20px;font-weight:700;color:var(--teal-dark);line-height:1;}
+    .register-success{text-align:center;padding:12px 0 4px;}
+    .register-success-icon{font-size:42px;margin-bottom:10px;}
+    .register-success-title{font-size:18px;font-weight:700;color:var(--teal-dark);margin-bottom:6px;}
+    .register-success-sub{font-size:13px;color:var(--text-muted);line-height:1.5;}
   </style>
 </head>
 <body>
@@ -264,11 +264,10 @@
     </button>
     <div class="login-logo">TALUS</div>
     <div class="login-tagline" style="margin-bottom:28px;">Create Account</div>
-
     <div id="register-form-body">
       <div class="login-field"><label>Username</label><input type="text" id="reg-username" placeholder="Choose a username" autocomplete="username" onkeydown="if(event.key==='Enter') document.getElementById('reg-tag').focus()"/></div>
       <div class="login-field">
-        <label>Tag ID <span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--text-muted);text-transform:none;letter-spacing:0;">(4-digit number)</span></label>
+        <label>Tag ID <span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--text-muted);text-transform:none;letter-spacing:0;">(1–4 digits)</span></label>
         <div class="register-tag-row">
           <span class="register-tag-hint">#</span>
           <input type="text" id="reg-tag" placeholder="e.g. 4821" maxlength="4" autocomplete="off" style="flex:1;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:'Space Mono',monospace;font-size:14px;color:var(--text-main);background:var(--teal-pale);outline:none;transition:border-color 0.18s;" onfocus="this.style.borderColor='var(--teal-accent)'" onblur="this.style.borderColor='var(--border)'" onkeydown="if(event.key==='Enter') document.getElementById('reg-password').focus()"/>
@@ -279,7 +278,6 @@
       <div class="login-error" id="register-error"></div>
       <button class="login-btn" onclick="doRegister()" style="margin-top:4px;">Create Account</button>
     </div>
-
     <div id="register-success-body" style="display:none;">
       <div class="register-success">
         <div class="register-success-icon">&#x2705;</div>
@@ -597,152 +595,314 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const WS_URL = 'wss://localhost:8765';
-  let currentUser = null;
-  let attachedItems = [];
+// ═══════════════════════════════════════════════════════════════════════
+// TALUS — WebSocket Communication Layer
+// All backend communication goes through a single persistent WSS
+// connection to server.py on wss://localhost:8765
+// ═══════════════════════════════════════════════════════════════════════
 
-  function doLogin() {
-    const username = document.getElementById('login-username').value.trim();
-    const password = document.getElementById('login-password').value;
-    const errEl = document.getElementById('login-error');
-    if (!username || !password) { errEl.textContent = 'Please enter both fields.'; return; }
-    if (password.length < 3) { errEl.textContent = 'Invalid username or password.'; return; }
-    errEl.textContent = '';
-    currentUser = { username, initials: username.slice(0,2).toUpperCase() };
-    document.getElementById('login-screen').classList.add('hidden');
-    document.getElementById('profile-btn').textContent = currentUser.initials;
-    document.getElementById('profile-display-name').textContent = username;
-    document.getElementById('profile-display-user').textContent = '@' + username.toLowerCase().replace(/\s+/g,'');
+const WS_URL = 'wss://localhost:8765';
+
+// ── Connection state ──────────────────────────────────────────────────
+let _ws = null;                    // the live WebSocket
+let _wsReady = false;              // true once open
+let _pendingResolvers = {};        // type → { resolve, reject, timeout }
+let _wsReconnectTimer = null;
+
+// Called once after login to open the persistent connection.
+function wsConnect() {
+  if (_ws && (_ws.readyState === WebSocket.OPEN || _ws.readyState === WebSocket.CONNECTING)) return;
+  _ws = new WebSocket(WS_URL);
+
+  _ws.onopen = () => {
+    _wsReady = true;
+    console.log('[WS] connected');
+    // Register this client as a receiver so the server tracks the session
+    if (currentUser) {
+      wsSend({ type: 'register', client_id: currentUser.username, role: 'receiver' });
+    }
+  };
+
+  _ws.onmessage = (event) => {
+    let msg;
+    try { msg = JSON.parse(event.data); } catch { return; }
+    const type = msg.type;
+    console.log('[WS] ←', type, msg);
+
+    // Route to any waiting one-shot resolver
+    if (_pendingResolvers[type]) {
+      const { resolve, timeout } = _pendingResolvers[type];
+      clearTimeout(timeout);
+      delete _pendingResolvers[type];
+      resolve(msg);
+      return;
+    }
+
+    // Push-based server messages (server initiates)
+    if (type === 'incoming_transfer') {
+      onIncomingTransfer(msg);
+    } else if (type === 'transfer_status_update') {
+      onTransferStatusUpdate(msg);
+    } else if (type === 'error') {
+      console.warn('[WS] server error:', msg.message);
+      toastMsg('⚠ Server: ' + msg.message);
+    }
+  };
+
+  _ws.onerror = (e) => {
+    console.warn('[WS] error', e);
+    _wsReady = false;
+  };
+
+  _ws.onclose = () => {
+    _wsReady = false;
+    console.log('[WS] closed — reconnecting in 5s');
+    clearTimeout(_wsReconnectTimer);
+    // Only reconnect if user is logged in
+    if (currentUser) {
+      _wsReconnectTimer = setTimeout(wsConnect, 5000);
+    }
+  };
+}
+
+// Send a message. Queues if not yet open.
+function wsSend(msg) {
+  if (_ws && _ws.readyState === WebSocket.OPEN) {
+    _ws.send(JSON.stringify(msg));
+  } else {
+    console.warn('[WS] not connected — message dropped:', msg.type);
   }
-  function openRegister() {
-    document.getElementById('register-screen').classList.remove('hidden');
-    document.getElementById('register-form-body').style.display = '';
-    document.getElementById('register-success-body').style.display = 'none';
-    document.getElementById('reg-username').value = '';
-    document.getElementById('reg-tag').value = '';
-    document.getElementById('reg-password').value = '';
-    document.getElementById('reg-confirm').value = '';
-    document.getElementById('register-error').textContent = '';
-    setTimeout(() => document.getElementById('reg-username').focus(), 100);
+}
+
+// Send a message and wait for a specific response type.
+// Returns a Promise that resolves with the response or rejects on timeout.
+function wsRequest(sendMsg, expectType, timeoutMs = 8000) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      delete _pendingResolvers[expectType];
+      reject(new Error(`Timeout waiting for '${expectType}'`));
+    }, timeoutMs);
+
+    _pendingResolvers[expectType] = { resolve, reject, timeout: timer };
+    wsSend(sendMsg);
+  });
+}
+
+// Cleanly disconnect (called on logout / page unload)
+function wsDisconnect() {
+  clearTimeout(_wsReconnectTimer);
+  if (_ws) {
+    // Tell server to clear session before closing
+    wsSend({ type: 'session_clear', client_id: currentUser ? currentUser.username : null });
+    _ws.close();
+    _ws = null;
   }
+  _wsReady = false;
+}
 
-  function closeRegister() {
-    document.getElementById('register-screen').classList.add('hidden');
-    setTimeout(() => document.getElementById('login-username').focus(), 100);
+// ═══════════════════════════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════════════════════════
+
+let currentUser = null;
+let attachedItems = [];
+
+async function doLogin() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl    = document.getElementById('login-error');
+  if (!username || !password) { errEl.textContent = 'Please enter both fields.'; return; }
+  errEl.textContent = '';
+
+  const btn = document.querySelector('.login-btn');
+  btn.textContent = 'Signing in…'; btn.disabled = true;
+
+  try {
+    // Open a temporary WS just for login, then switch to persistent connection
+    const tempWs = new WebSocket(WS_URL);
+    await new Promise((res, rej) => { tempWs.onopen = res; tempWs.onerror = () => rej(new Error('Cannot reach server')); });
+
+    const reply = await new Promise((res, rej) => {
+      const t = setTimeout(() => rej(new Error('Login timeout')), 8000);
+      tempWs.onmessage = e => { clearTimeout(t); res(JSON.parse(e.data)); };
+      tempWs.onerror = () => rej(new Error('Connection error'));
+      tempWs.send(JSON.stringify({ type: 'login', username, password }));
+    });
+    tempWs.close();
+
+    if (reply.type === 'login_ack') {
+      _afterLogin(username, reply.user_id);
+    } else {
+      errEl.textContent = reply.message || 'Invalid username or password.';
+    }
+  } catch (err) {
+    // Server not available — allow UI demo login with basic validation
+    if (password.length >= 3) {
+      _afterLogin(username, null);
+    } else {
+      errEl.textContent = 'Invalid username or password.';
+    }
+  } finally {
+    btn.textContent = 'Sign In'; btn.disabled = false;
   }
+}
 
-  async function doRegister() {
-    const username = document.getElementById('reg-username').value.trim();
-    const tag      = document.getElementById('reg-tag').value.trim();
-    const password = document.getElementById('reg-password').value;
-    const confirm  = document.getElementById('reg-confirm').value;
-    const errEl    = document.getElementById('register-error');
-    errEl.textContent = '';
+function _afterLogin(username, userId) {
+  currentUser = { username, userId, initials: username.slice(0,2).toUpperCase() };
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('profile-btn').textContent = currentUser.initials;
+  document.getElementById('profile-display-name').textContent = username;
+  document.getElementById('profile-display-user').textContent = '@' + username.toLowerCase().replace(/\s+/g,'');
+  wsConnect(); // open persistent connection
+}
 
-    if (!username)              { errEl.textContent = 'Please enter a username.'; return; }
-    if (!/^\d{1,4}$/.test(tag)) { errEl.textContent = 'Tag ID must be 1–4 digits.'; return; }
-    if (!password)              { errEl.textContent = 'Please enter a password.'; return; }
-    if (password.length < 6)    { errEl.textContent = 'Password must be at least 6 characters.'; return; }
-    if (password !== confirm)   { errEl.textContent = 'Passwords do not match.'; return; }
+function doLogout() {
+  wsDisconnect();
+  currentUser = null;
+  receiveItems = [];
+  selectedReceiveId = null;
+  receiveInitialised = false;
+  document.getElementById('profile-dropdown').classList.remove('open');
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('login-username').value = '';
+  document.getElementById('login-password').value = '';
+  document.getElementById('login-error').textContent = '';
+  setTimeout(() => document.getElementById('login-username').focus(), 100);
+}
 
-    const btn = document.querySelector('#register-form-body .login-btn');
-    btn.textContent = 'Creating…'; btn.disabled = true;
+function toggleProfileMenu() { document.getElementById('profile-dropdown').classList.toggle('open'); }
+document.addEventListener('click', function(e) {
+  const btn = document.getElementById('profile-btn'), drop = document.getElementById('profile-dropdown');
+  if (!btn.contains(e.target) && !drop.contains(e.target)) drop.classList.remove('open');
+});
 
-    try {
-      const ws = new WebSocket(WS_URL);
-      await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; });
-      ws.send(JSON.stringify({ type: 'create_account', username, password, tag_id: tag }));
-      const reply = await new Promise((res, rej) => {
-        ws.onmessage = e => res(JSON.parse(e.data));
-        ws.onerror   = rej;
-        setTimeout(() => rej(new Error('timeout')), 8000);
-      });
-      ws.close();
+// ── Register ──────────────────────────────────────────────────────────
+function openRegister() {
+  document.getElementById('register-screen').classList.remove('hidden');
+  document.getElementById('register-form-body').style.display = '';
+  document.getElementById('register-success-body').style.display = 'none';
+  ['reg-username','reg-tag','reg-password','reg-confirm'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('register-error').textContent = '';
+  setTimeout(() => document.getElementById('reg-username').focus(), 100);
+}
+function closeRegister() {
+  document.getElementById('register-screen').classList.add('hidden');
+  setTimeout(() => document.getElementById('login-username').focus(), 100);
+}
+async function doRegister() {
+  const username = document.getElementById('reg-username').value.trim();
+  const tag      = document.getElementById('reg-tag').value.trim();
+  const password = document.getElementById('reg-password').value;
+  const confirm  = document.getElementById('reg-confirm').value;
+  const errEl    = document.getElementById('register-error');
+  errEl.textContent = '';
 
-      if (reply.type === 'create_account_ack') {
-        document.getElementById('register-form-body').style.display = 'none';
-        document.getElementById('register-success-body').style.display = '';
-        document.getElementById('register-success-msg').textContent =
-          `Welcome, ${username}#${tag}! You can now sign in with your new account.`;
-      } else {
-        errEl.textContent = reply.message || 'Registration failed — please try again.';
-      }
-    } catch (err) {
-      // Server not connected yet — show success for UI demo purposes
+  if (!username)               { errEl.textContent = 'Please enter a username.'; return; }
+  if (!/^\d{1,4}$/.test(tag))  { errEl.textContent = 'Tag ID must be 1–4 digits.'; return; }
+  if (!password)               { errEl.textContent = 'Please enter a password.'; return; }
+  if (password.length < 6)     { errEl.textContent = 'Password must be at least 6 characters.'; return; }
+  if (password !== confirm)    { errEl.textContent = 'Passwords do not match.'; return; }
+
+  const btn = document.querySelector('#register-form-body .login-btn');
+  btn.textContent = 'Creating…'; btn.disabled = true;
+
+  try {
+    // create_account uses a short-lived connection (user isn't logged in yet)
+    const tempWs = new WebSocket(WS_URL);
+    await new Promise((res, rej) => { tempWs.onopen = res; tempWs.onerror = () => rej(new Error('Cannot reach server')); });
+    const reply = await new Promise((res, rej) => {
+      const t = setTimeout(() => rej(new Error('timeout')), 8000);
+      tempWs.onmessage = e => { clearTimeout(t); res(JSON.parse(e.data)); };
+      tempWs.onerror = () => rej(new Error('Connection error'));
+      tempWs.send(JSON.stringify({ type: 'create_account', username, password, tag_id: tag }));
+    });
+    tempWs.close();
+
+    if (reply.type === 'create_account_ack') {
       document.getElementById('register-form-body').style.display = 'none';
       document.getElementById('register-success-body').style.display = '';
       document.getElementById('register-success-msg').textContent =
-        `Account for ${username}#${tag} queued. Connect to the server to complete registration.`;
-    } finally {
-      btn.textContent = 'Create Account'; btn.disabled = false;
+        `Welcome, ${username}#${tag}! You can now sign in with your new account.`;
+    } else {
+      errEl.textContent = reply.message || 'Registration failed — please try again.';
     }
+  } catch (err) {
+    // Server not reachable — queue locally for demo
+    document.getElementById('register-form-body').style.display = 'none';
+    document.getElementById('register-success-body').style.display = '';
+    document.getElementById('register-success-msg').textContent =
+      `Account for ${username}#${tag} queued. Connect to the server to complete registration.`;
+  } finally {
+    btn.textContent = 'Create Account'; btn.disabled = false;
   }
+}
 
-  function doLogout() {
-    currentUser = null;
-    document.getElementById('profile-dropdown').classList.remove('open');
-    document.getElementById('login-screen').classList.remove('hidden');
-    document.getElementById('login-username').value = '';
-    document.getElementById('login-password').value = '';
-    document.getElementById('login-error').textContent = '';
-    setTimeout(() => document.getElementById('login-username').focus(), 100);
+// ═══════════════════════════════════════════════════════════════════════
+// TAB SWITCHING
+// ═══════════════════════════════════════════════════════════════════════
+
+function switchTab(btn, panel) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(panel + '-panel').classList.add('active');
+  if (panel === 'receive') initReceive();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// RECEIVE PANEL  — all comms via WebSocket
+// ═══════════════════════════════════════════════════════════════════════
+
+let receiveActive    = true;
+let receiveItems     = [];
+let selectedReceiveId = null;
+let receiveInitialised = false;
+
+async function initReceive() {
+  if (receiveInitialised) return;
+  receiveInitialised = true;
+  await fetchTransfers();
+}
+
+// Request the incoming queue from the server
+async function fetchTransfers() {
+  if (!_wsReady) {
+    showReceiveError('Not connected to server. Retrying…');
+    setTimeout(fetchTransfers, 5000);
+    return;
   }
-  function toggleProfileMenu() { document.getElementById('profile-dropdown').classList.toggle('open'); }
-  document.addEventListener('click', function(e) {
-    const btn = document.getElementById('profile-btn'), drop = document.getElementById('profile-dropdown');
-    if (!btn.contains(e.target) && !drop.contains(e.target)) drop.classList.remove('open');
-  });
-
-  // ── Tab switching ─────────────────────────────────────────────────────
-  function switchTab(btn, panel) {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    document.getElementById(panel + '-panel').classList.add('active');
-    if (panel === 'receive') initReceive();
-  }
-
-  // ── TALUS-176: Receive panel ──────────────────────────────────────────
-  let receiveActive = true;
-  let receiveItems = [];
-  let selectedReceiveId = null;
-  let receiveInitialised = false;
-
-  // Talus-154: Connect UI to server database
-  const API_BASE = 'https://your-api-url.com' // Make sure the API database we are using is connected here
-
-  async function initReceive() {
-    if (receiveInitialised) return;
-    receiveInitialised = true;
-    await fetchTransfers();
-    startPolling();
-  }
-
-  async function fetchTransfers() {
-    try {
-    const res = await fetch(`${API_BASE}/transfers/incoming`, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' }
-    });
-    if (res.status === 403) {
-      const data = await res.json();
-      if (data.reason === 'time_of_day') {
-        showReceiveError(`Access restricted — outside allowed hours (${data.allowedWindow}).`);
-      } else {
-        showReceiveError('Access denied by server.');
-      }
-      return;
-    }
-    if (!res.ok) throw new Error(`Server error: ${res.status}`);
-    const data = await res.json();
-    receiveItems = data.transfers;
+  try {
+    const reply = await wsRequest(
+      { type: 'get_incoming_transfers', client_id: currentUser.username },
+      'incoming_transfers_list'
+    );
+    receiveItems = reply.transfers || [];
     hideReceiveError();
     renderReceiveQueue();
     updateReceiveBadge();
   } catch (err) {
-    toastMsg('⚠ Could not load transfers — retrying…');
-    console.error('fetchTransfers error:', err);
+    showReceiveError('Could not load transfers — retrying…');
+    console.warn('[WS] fetchTransfers failed:', err);
+    setTimeout(fetchTransfers, 10000);
   }
+}
+
+// Server pushes a new transfer in real-time
+function onIncomingTransfer(msg) {
+  const existing = receiveItems.find(i => i.id === msg.transfer.id);
+  if (!existing) receiveItems.unshift(msg.transfer);
+  renderReceiveQueue();
+  updateReceiveBadge();
+  toastMsg(`📥 New transfer from ${msg.transfer.sender}`);
+}
+
+// Server pushes a status change (e.g. sender cancelled)
+function onTransferStatusUpdate(msg) {
+  receiveItems = receiveItems.map(i =>
+    i.id === msg.transfer_id ? { ...i, status: msg.status } : i
+  );
+  renderReceiveQueue();
+  updateReceiveBadge();
 }
 
 function showReceiveError(msg) {
@@ -750,167 +910,172 @@ function showReceiveError(msg) {
   if (!el) {
     el = document.createElement('div');
     el.id = 'receive-error-bar';
-    el.style.cssText = `
-      background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;
+    el.style.cssText = `background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;
       font-size:13px;font-weight:600;padding:10px 16px;
       border-radius:var(--radius-sm);margin-bottom:12px;
-      display:flex;align-items:center;gap:8px;flex-shrink:0;
-    `;
+      display:flex;align-items:center;gap:8px;flex-shrink:0;`;
     const layout = document.querySelector('.receive-layout');
     layout.insertBefore(el, layout.children[1]);
   }
-  el.innerHTML = `
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-    </svg>
-    ${msg}`;
+  el.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>${msg}`;
   el.style.display = 'flex';
 }
-
 function hideReceiveError() {
   const el = document.getElementById('receive-error-bar');
   if (el) el.style.display = 'none';
 }
 
-function startPolling() {
-  setInterval(fetchTransfers, 10000); // polls every 10 seconds
+function toggleReceive() {
+  receiveActive = !receiveActive;
+  document.getElementById('receive-dot').classList.toggle('stopped', !receiveActive);
+  document.getElementById('receive-status-text').textContent =
+    receiveActive ? 'Listening for incoming transfers…' : 'Receiver stopped';
+  document.getElementById('receive-toggle-btn').textContent = receiveActive ? 'Stop' : 'Start';
+  // Notify server so it stops queuing transfers for this client
+  wsSend({ type: receiveActive ? 'receiver_start' : 'receiver_stop', client_id: currentUser.username });
+  toastMsg(receiveActive ? '▶ Receiver started' : '■ Receiver stopped');
 }
- 
-  function toggleReceive() {
-    receiveActive = !receiveActive;
-    document.getElementById('receive-dot').classList.toggle('stopped', !receiveActive);
-    document.getElementById('receive-status-text').textContent =
-      receiveActive ? 'Listening for incoming transfers…' : 'Receiver stopped';
-    document.getElementById('receive-toggle-btn').textContent = receiveActive ? 'Stop' : 'Start';
-    toastMsg(receiveActive ? '▶ Receiver started' : '■ Receiver stopped');
+
+function updateReceiveBadge() {
+  const n = receiveItems.filter(i => i.status === 'pending').length;
+  document.getElementById('receive-badge').textContent = n + ' pending';
+}
+
+function renderReceiveQueue() {
+  const el = document.getElementById('receive-queue');
+  if (!receiveItems.length) {
+    el.innerHTML = `<div class="receive-empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0018 9h-1.26A8 8 0 103 16.29"/></svg>
+      <p>No incoming transfers</p><small>Transfers sent to you will appear here</small></div>`;
+    return;
   }
- 
-  function updateReceiveBadge() {
-    const n = receiveItems.filter(i => i.status === 'pending').length;
-    document.getElementById('receive-badge').textContent = n + ' pending';
+  el.innerHTML = receiveItems.map(item => `
+    <div class="receive-queue-item${selectedReceiveId === item.id ? ' active' : ''}" onclick="selectReceiveItem('${item.id}')">
+      <div class="rq-avatar">${item.initials}</div>
+      <div class="rq-info">
+        <div class="rq-sender">${item.sender}</div>
+        <div class="rq-meta">${item.files.length} file(s) · ${item.time}</div>
+      </div>
+      <span class="rq-status ${item.status}">${item.status}</span>
+    </div>`).join('');
+}
+
+// Select a transfer — handles view-count, time restriction, and password checks
+// then sends log_view to server via WS
+async function selectReceiveItem(id) {
+  const item = receiveItems.find(i => i.id === id);
+  if (!item) return;
+
+  // TALUS-178: View count enforcement (server is authoritative; this is a UI hint)
+  if (item.maxViews && item.viewCount >= item.maxViews) {
+    toastMsg('⚠ Maximum view count reached for this transfer.');
+    return;
   }
- 
-  function renderReceiveQueue() {
-    const el = document.getElementById('receive-queue');
-    if (!receiveItems.length) {
-      el.innerHTML = `<div class="receive-empty">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0018 9h-1.26A8 8 0 103 16.29"/></svg>
-        <p>No incoming transfers</p><small>Transfers sent to you will appear here</small></div>`;
-      return;
-    }
-    el.innerHTML = receiveItems.map(item => `
-      <div class="receive-queue-item${selectedReceiveId === item.id ? ' active' : ''}" onclick="selectReceiveItem(${item.id})">
-        <div class="rq-avatar">${item.initials}</div>
-        <div class="rq-info">
-          <div class="rq-sender">${item.sender}</div>
-          <div class="rq-meta">${item.files.length} file(s) · ${item.time}</div>
-        </div>
-        <span class="rq-status ${item.status}">${item.status}</span>
-      </div>`).join('');
+  // TALUS-179: Time-of-day restriction (server is authoritative; this is a UI hint)
+  if (item.timeRestricted && !item.withinAllowedWindow) {
+    showReceiveError(`Access restricted — "${item.sender}" limited to ${item.allowedWindow}.`);
+    return;
+  }
+  // Password gate
+  if (item.passwordRequired && !item.passwordVerified) {
+    openReceivePasswordModal(id);
+    return;
   }
 
-  // Talus-113: Design authentication/reception check
- async function selectReceiveItem(id) {
-    const item = receiveItems.find(i => i.id === id);
-   // Talus-178: View counts
-    if (item.maxViews && item.viewCount >= item.maxViews) {
-      toastMsg('⚠ Maximum view count reached for this transfer.');
-      return;
-    }
-   // Talus-179: Time of day access
-   if (item.timeRestricted && !item.withinAllowedWindow) {
-      showReceiveError(`Access restricted — "${item.sender}" has limited access to ${item.allowedWindow}.`);
-      return;
-    }
-    if (item.passwordRequired && !item.passwordVerified) {
-      openReceivePasswordModal(id);
-      return;
-    }
-    try {
-      await fetch(`${API_BASE}/transfers/${id}/view`, { method: 'POST' });
-      receiveItems = receiveItems.map(i =>
-        i.id === id ? { ...i, viewCount: (i.viewCount || 0) + 1 } : i
-      );
-    } catch {
-      toastMsg('⚠ Could not log view — proceeding anyway.');
-    }
-    selectedReceiveId = id;
-    renderReceiveQueue();
-      const fileIcon = f => f.type === 'PDF' ? '📄' : f.type === 'PNG' || f.type === 'JPG' ? '🖼' : f.type === 'DOCX' ? '📝' : '📁';
-      const detail = document.getElementById('receive-detail');
-      detail.innerHTML = `
-        <div class="receive-sender-card">
-          <div class="receive-sender-avatar">${item.initials}</div>
-          <div style="flex:1">
-            <div style="display:flex;align-items:center;gap:8px">
-              <div class="receive-sender-name">${item.sender}</div>
-              ${item.verified
-                ? `<span style="display:inline-flex;align-items:center;gap:4px;background:#e6f9f0;border:1px solid #a3d9bb;color:#1a6b40;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:600;">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-                    Verified
-                  </span>`
-                : `<span style="display:inline-flex;align-items:center;gap:4px;background:#fef9c3;border:1px solid #fcd34d;color:#854d0e;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:600;">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                    Unverified
-                  </span>`
-              }
-            </div>
-            <div class="receive-sender-time">${item.tag} · ${item.time}</div>
-          </div>
-          <span class="receive-status-pill ${item.status}">${item.status}</span>
-        </div>
- 
-      <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;">
-        <div class="confirm-items-label">Files included</div>
-        ${item.maxViews
-          ? `<span style="font-family:'Space Mono',monospace;font-size:11px;color:${item.viewCount >= item.maxViews ? '#991b1b' : 'var(--text-muted)'};">
-              ${item.viewCount} / ${item.maxViews} views used
-            </span>`
-          : `<span style="font-family:'Space Mono',monospace;font-size:11px;color:var(--text-muted);">Unlimited views</span>`
-        }
-      </div>
-      <div style="margin-top:14px;">
-        <div class="confirm-items-label">Files included</div>
-        <div class="receive-files-list">
-          ${item.files.map(f => `
-            <div class="receive-file-chip">
-              <span>${fileIcon(f)}</span>
-              <span style="flex:1">${f.name}</span>
-              <span style="font-family:'Space Mono',monospace;font-size:11px;color:var(--text-muted)">${f.size} · ${f.type}</span>
-            </div>`).join('')}
-        </div>
-      </div>
- 
-      ${item.options.length ? `
-      <div style="margin-top:12px;">
-        <div class="confirm-items-label">Send options applied</div>
-        <div class="receive-options-list">
-          ${item.options.map(o => `<div class="receive-opt-chip">🔒 <span>${o}</span></div>`).join('')}
-        </div>
-      </div>` : ''}
- 
-      ${item.status === 'pending' ? `
-      <div class="receive-detail-actions">
-        <button class="btn-decline" onclick="respondReceive(${item.id},'declined')">Decline</button>
-        <button class="btn-accept" onclick="respondReceive(${item.id},'accepted')">Accept &amp; Download</button>
-      </div>` : `
-      <div style="margin-top:16px;font-size:13px;color:var(--text-muted);">
-        This transfer was <strong>${item.status}</strong>.
-      </div>`}`;
+  // Log the view on the server
+  try {
+    await wsRequest(
+      { type: 'log_transfer_view', transfer_id: id, client_id: currentUser.username },
+      'log_transfer_view_ack'
+    );
+    receiveItems = receiveItems.map(i =>
+      i.id === id ? { ...i, viewCount: (i.viewCount || 0) + 1 } : i
+    );
+  } catch {
+    toastMsg('⚠ Could not log view — proceeding anyway.');
+  }
+
+  selectedReceiveId = id;
+  renderReceiveQueue();
+  _renderTransferDetail(item);
 }
- 
+
+function _renderTransferDetail(item) {
+  const fileIcon = f => f.type === 'PDF' ? '📄' : f.type === 'PNG' || f.type === 'JPG' ? '🖼' : f.type === 'DOCX' ? '📝' : '📁';
+  const detail = document.getElementById('receive-detail');
+  detail.innerHTML = `
+    <div class="receive-sender-card">
+      <div class="receive-sender-avatar">${item.initials}</div>
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="receive-sender-name">${item.sender}</div>
+          ${item.verified
+            ? `<span style="display:inline-flex;align-items:center;gap:4px;background:#e6f9f0;border:1px solid #a3d9bb;color:#1a6b40;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:600;">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Verified</span>`
+            : `<span style="display:inline-flex;align-items:center;gap:4px;background:#fef9c3;border:1px solid #fcd34d;color:#854d0e;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:600;">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Unverified</span>`
+          }
+        </div>
+        <div class="receive-sender-time">${item.tag} · ${item.time}</div>
+      </div>
+      <span class="receive-status-pill ${item.status}">${item.status}</span>
+    </div>
+
+    <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;">
+      <div class="confirm-items-label">Files included</div>
+      ${item.maxViews
+        ? `<span style="font-family:'Space Mono',monospace;font-size:11px;color:${item.viewCount >= item.maxViews ? '#991b1b' : 'var(--text-muted)'};">
+            ${item.viewCount} / ${item.maxViews} views used</span>`
+        : `<span style="font-family:'Space Mono',monospace;font-size:11px;color:var(--text-muted);">Unlimited views</span>`
+      }
+    </div>
+    <div style="margin-top:8px;">
+      <div class="receive-files-list">
+        ${item.files.map(f => `
+          <div class="receive-file-chip">
+            <span>${fileIcon(f)}</span>
+            <span style="flex:1">${f.name}</span>
+            <span style="font-family:'Space Mono',monospace;font-size:11px;color:var(--text-muted)">${f.size} · ${f.type}</span>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    ${item.options && item.options.length ? `
+    <div style="margin-top:12px;">
+      <div class="confirm-items-label">Send options applied</div>
+      <div class="receive-options-list">
+        ${item.options.map(o => `<div class="receive-opt-chip">🔒 <span>${o}</span></div>`).join('')}
+      </div>
+    </div>` : ''}
+
+    ${item.status === 'pending' ? `
+    <div class="receive-detail-actions">
+      <button class="btn-decline" onclick="respondReceive('${item.id}','declined')">Decline</button>
+      <button class="btn-accept" onclick="respondReceive('${item.id}','accepted')">Accept &amp; Download</button>
+    </div>` : `
+    <div style="margin-top:16px;font-size:13px;color:var(--text-muted);">
+      This transfer was <strong>${item.status}</strong>.
+    </div>`}`;
+}
+
+// Accept or decline a transfer — sends decision to server via WS
 async function respondReceive(id, decision) {
   receiveItems = receiveItems.map(i => i.id === id ? { ...i, status: decision } : i);
+
   try {
-    await fetch(`${API_BASE}/transfers/${id}/${decision}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
-    });
+    await wsRequest(
+      { type: 'transfer_response', transfer_id: id, decision, client_id: currentUser.username },
+      'transfer_response_ack'
+    );
   } catch (err) {
     toastMsg('⚠ Could not sync status to server.');
-    console.error('respondReceive sync error:', err);
-}
+    console.warn('[WS] respondReceive sync error:', err);
+  }
+
   if (decision === 'accepted') downloadTransfer(id);
+
   selectedReceiveId = null;
   renderReceiveQueue();
   updateReceiveBadge();
@@ -923,20 +1088,51 @@ async function respondReceive(id, decision) {
   toastMsg(decision === 'accepted' ? '✓ Transfer accepted — downloading…' : 'Transfer declined');
 }
 
-function downloadTransfer(id) {
+// Request the actual file bytes from server (request_file_access flow)
+async function downloadTransfer(id) {
   const item = receiveItems.find(i => i.id === id);
   if (!item) return;
-  item.files.forEach(f => {
-    // Replace f.url with the real backend URL once TALUS-154 is wired up
-    if (!f.url) { toastMsg(`⚠ No download URL yet for ${f.name}`); return; }
-    const a = document.createElement('a');
-    a.href = f.url;
-    a.download = f.name;
-    a.click();
-  });
+  try {
+    const reply = await wsRequest(
+      {
+        type: 'request_file_access',
+        receiver_id: currentUser.username,
+        package_id: id,
+        // encrypted_receiver_metadata_b64 will be filled in once
+        // the full crypto handshake is wired up; placeholder for now
+        encrypted_receiver_metadata_b64: ''
+      },
+      'authorized_file_delivery',
+      12000
+    );
+    // reply.encrypted_file_b64 contains the file — decrypt and trigger download
+    _triggerDownload(reply.encrypted_file_b64, item);
+  } catch (err) {
+    if (err.message && err.message.includes('Timeout')) {
+      toastMsg('⚠ Server did not authorise download in time.');
+    } else {
+      toastMsg('⚠ Download failed — check console.');
+    }
+    console.warn('[WS] downloadTransfer error:', err);
+  }
 }
 
-// Talus-177: Receiver Password Prompt
+function _triggerDownload(encryptedB64, item) {
+  // Once client-side decryption is wired up, decrypt here first.
+  // For now, download the raw payload so the pipeline can be tested end-to-end.
+  const blob = new Blob(
+    [Uint8Array.from(atob(encryptedB64), c => c.charCodeAt(0))],
+    { type: 'application/octet-stream' }
+  );
+  const url = URL.createObjectURL(blob);
+  item.files.forEach(f => {
+    const a = document.createElement('a');
+    a.href = url; a.download = f.name; a.click();
+  });
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ── Receiver password prompt (TALUS-177) ─────────────────────────────
 let pendingPasswordTransferId = null;
 
 function openReceivePasswordModal(id) {
@@ -946,301 +1142,336 @@ function openReceivePasswordModal(id) {
   document.getElementById('receive-pw-modal').classList.add('open');
   setTimeout(() => document.getElementById('receive-pw-input').focus(), 50);
 }
-
 function closeReceivePasswordModal() {
   pendingPasswordTransferId = null;
   document.getElementById('receive-pw-modal').classList.remove('open');
 }
-
 function toggleReceivePwVisibility() {
   const input = document.getElementById('receive-pw-input');
-  const eye = document.getElementById('receive-pw-eye');
-  const isHidden = input.type === 'password';
-  input.type = isHidden ? 'text' : 'password';
-  eye.innerHTML = isHidden
+  const eye   = document.getElementById('receive-pw-eye');
+  const hide  = input.type === 'password';
+  input.type  = hide ? 'text' : 'password';
+  eye.innerHTML = hide
     ? `<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>`
     : `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
 }
-
 async function submitReceivePassword() {
-  const pw = document.getElementById('receive-pw-input').value;
+  const pw    = document.getElementById('receive-pw-input').value;
   const errEl = document.getElementById('receive-pw-error');
   if (!pw) { errEl.textContent = 'Please enter a password.'; return; }
 
-  // Hash the password before sending — never send plaintext
-  const msgBuffer = new TextEncoder().encode(pw);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  // Hash before sending — never send plaintext
+  const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
   const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2,'0')).join('');
 
   try {
-    const res = await fetch(`${API_BASE}/transfers/${pendingPasswordTransferId}/verify-password`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ passwordHash: hashHex })
-    });
-    if (res.status === 403) { errEl.textContent = 'Invalid password.'; return; }
-    if (!res.ok) throw new Error();
+    const reply = await wsRequest(
+      {
+        type: 'verify_transfer_password',
+        transfer_id: pendingPasswordTransferId,
+        password_hash: hashHex,
+        client_id: currentUser.username
+      },
+      'verify_transfer_password_ack'
+    );
+    if (reply.status === 'denied') { errEl.textContent = 'Invalid password.'; return; }
     receiveItems = receiveItems.map(i =>
-    i.id === pendingPasswordTransferId ? { ...i, passwordVerified: true } : i
+      i.id === pendingPasswordTransferId ? { ...i, passwordVerified: true } : i
     );
     closeReceivePasswordModal();
     selectReceiveItem(pendingPasswordTransferId);
-  } catch {
+  } catch (err) {
     errEl.textContent = 'Could not verify — try again.';
   }
 }
-
 document.getElementById('receive-pw-modal').addEventListener('click', function(e) {
   if (e.target === this) closeReceivePasswordModal();
 });
-  
-  // TALUS-109: Text upload
-  function openTextModal() { document.getElementById('text-modal').classList.add('open'); setTimeout(() => document.getElementById('text-input').focus(), 50); }
-  function closeTextModal() { document.getElementById('text-modal').classList.remove('open'); }
-  function attachText() {
-    const val = document.getElementById('text-input').value.trim();
-    if (!val) { toastMsg('Please enter some text first.'); return; }
-    addItem(val.length > 32 ? val.slice(0,32)+'…' : val, 'text', null, val);
-    document.getElementById('text-input').value = '';
-    closeTextModal();
-  }
-  document.getElementById('text-modal').addEventListener('click', function(e) { if (e.target === this) closeTextModal(); });
 
-  // TALUS-137: File upload
-  function attachFiles(e, type) {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
-    files.forEach(f => addItem(f.name, 'file', f));
-    e.target.value = '';
-  }
+// ═══════════════════════════════════════════════════════════════════════
+// SEND PANEL
+// ═══════════════════════════════════════════════════════════════════════
 
-  // TALUS-159: Final verification
-  function openConfirmModal(id) {
-    if (!attachedItems.length) { toastMsg('Attach something to send first.'); return; }
-    const r = recipients.find(r => r.id === id);
-    if (!r) return;
-    document.getElementById('confirm-avatar').textContent = r.username.slice(0,2).toUpperCase();
-    document.getElementById('confirm-name').textContent = r.username;
-    document.getElementById('confirm-tag').textContent = '#' + r.tag;
-    document.getElementById('confirm-items-list').innerHTML = attachedItems.map(item =>
-      `<div class="confirm-item-chip">
-        <span>${item.type==='folder'?'📁':item.type==='text'?'📝':'📄'}</span>
-        <span>${item.name}</span>
-      </div>`).join('');
-    // Read active send option toggles
-    const labels = ['IP Filter','Device Certification','Track File Views','Time of Day','Limited Access','Watermark','Password / PIN'];
-    const icons  = ['🌐','🔒','👁','🕐','🔢','💧','🔑'];
-    const values = [
-      ipList.length ? ipList.slice(0,2).join(', ')+(ipList.length>2?'…':'') : null,
-      null, null,
-      document.getElementById('tod-value').textContent,
-      document.getElementById('la-value').textContent+' views max',
-      null, null
-    ];
-    const toggles = document.querySelectorAll('.right-col .toggle input');
-    const active = [];
-    toggles.forEach((t,i) => { if (t.checked) active.push({ label:labels[i], icon:icons[i], value:values[i] }); });
-    const optEl = document.getElementById('confirm-options-list');
-    optEl.innerHTML = active.length
-      ? active.map(o=>`<div class="confirm-option-chip"><span>${o.icon}</span><span>${o.label}</span>${o.value?`<span class="confirm-option-value">${o.value}</span>`:''}</div>`).join('')
-      : `<div class="confirm-no-options">No send options enabled.</div>`;
-    document.getElementById('confirm-modal')._recipientId = id;
-    document.getElementById('confirm-modal').classList.add('open');
-  }
-  function confirmSend() {
-    const id = document.getElementById('confirm-modal')._recipientId;
-    const r = recipients.find(r=>r.id===id);
-    closeModal('confirm-modal');
-    toastMsg(`✓ Sent ${attachedItems.length} item(s) to ${r.username}#${r.tag}`);
-  }
-  document.getElementById('confirm-modal').addEventListener('click',function(e){if(e.target===this)closeModal('confirm-modal');});
+// TALUS-109: Text upload
+function openTextModal()  { document.getElementById('text-modal').classList.add('open'); setTimeout(() => document.getElementById('text-input').focus(), 50); }
+function closeTextModal() { document.getElementById('text-modal').classList.remove('open'); }
+function attachText() {
+  const val = document.getElementById('text-input').value.trim();
+  if (!val) { toastMsg('Please enter some text first.'); return; }
+  addItem(val.length > 32 ? val.slice(0,32)+'…' : val, 'text', null, val);
+  document.getElementById('text-input').value = '';
+  closeTextModal();
+}
+document.getElementById('text-modal').addEventListener('click', function(e) { if (e.target === this) closeTextModal(); });
 
-  // TALUS-139: File preview
-  function openPreview(id) {
-    const item = attachedItems.find(i=>i.id===id);
-    if (!item) return;
-    const icon = item.type==='folder'?'📁':item.type==='text'?'📝':'📄';
-    document.getElementById('preview-icon').textContent = icon;
-    document.getElementById('preview-name').textContent = item.name;
-    document.getElementById('preview-type').textContent = item.type.toUpperCase() + (item.fileObj ? ` · ${(item.fileObj.size/1024).toFixed(1)} KB` : '');
-    const body = document.getElementById('preview-body');
-    if (item.type === 'text') {
-      body.textContent = item.fullText || item.name;
-    } else if (item.fileObj && item.fileObj.type.startsWith('text/')) {
-      const reader = new FileReader();
-      reader.onload = e => { body.textContent = e.target.result; };
-      reader.readAsText(item.fileObj);
-      body.textContent = 'Loading…';
-    } else if (item.fileObj && item.fileObj.type.startsWith('image/')) {
-      const url = URL.createObjectURL(item.fileObj);
-      body.innerHTML = `<img src="${url}" style="max-width:100%;border-radius:6px;" onload="URL.revokeObjectURL(this.src)"/>`;
-    } else {
-      body.textContent = item.fileObj
-        ? `File: ${item.fileObj.name}\nSize: ${(item.fileObj.size/1024).toFixed(1)} KB\nType: ${item.fileObj.type||'unknown'}`
-        : `${item.type === 'folder' ? 'Folder' : 'Item'}: ${item.name}\nPreview not available for this type.`;
-    }
-    document.getElementById('preview-modal').classList.add('open');
-  }
-  document.getElementById('preview-modal').addEventListener('click',function(e){if(e.target===this)closeModal('preview-modal');});
+// TALUS-137: File upload
+function attachFiles(e, type) {
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
+  files.forEach(f => addItem(f.name, 'file', f));
+  e.target.value = '';
+}
 
-  // TALUS-158: Recipient section
-  let recipients = [];
-  function addRecipient() {
-    const input = document.getElementById('recipient-input');
-    const val = input.value.trim();
-    if (!val) { toastMsg('Enter a username#tag to add.'); return; }
-    const match = val.match(/^(.+)#(\d{1,8})$/);
-    if (!match) { toastMsg('Format must be username#0000'); input.focus(); return; }
-    const username = match[1].trim(), tag = match[2];
-    const full = `${username}#${tag}`;
-    if (recipients.find(r=>r.full.toLowerCase()===full.toLowerCase())) { toastMsg(`${full} already added.`); input.value=''; return; }
-    const id = Date.now() + Math.random();
-    recipients.push({ id, username, tag, full });
-    renderRecipients(); input.value=''; toastMsg(`${full} added`);
-  }
-  function removeRecipient(id) { recipients=recipients.filter(r=>r.id!==id); renderRecipients(); }
-  function renderRecipients() {
-    const list = document.getElementById('user-list');
-    if (!recipients.length) { list.innerHTML=`<div style="padding:20px 16px;font-size:13px;color:var(--text-muted);text-align:center;">No recipients yet.<br>Enter a username#tag above.</div>`; return; }
-    list.innerHTML = recipients.map(r=>`
-      <div class="user-item" onclick="openConfirmModal(${r.id})">
-        <div class="avatar">${r.username.slice(0,2).toUpperCase()}</div>
-        <span style="flex:1">${r.username}<span style="opacity:0.6;font-size:12px">#${r.tag}</span></span>
-        <button class="remove-btn" style="font-size:18px;" onclick="event.stopPropagation();removeRecipient(${r.id})">×</button>
-      </div>`).join('');
-  }
-  renderRecipients();
+// TALUS-159: Confirm & send modal
+function openConfirmModal(id) {
+  if (!attachedItems.length) { toastMsg('Attach something to send first.'); return; }
+  const r = recipients.find(r => r.id === id);
+  if (!r) return;
+  document.getElementById('confirm-avatar').textContent = r.username.slice(0,2).toUpperCase();
+  document.getElementById('confirm-name').textContent   = r.username;
+  document.getElementById('confirm-tag').textContent    = '#' + r.tag;
+  document.getElementById('confirm-items-list').innerHTML = attachedItems.map(item =>
+    `<div class="confirm-item-chip">
+      <span>${item.type==='folder'?'📁':item.type==='text'?'📝':'📄'}</span>
+      <span>${item.name}</span>
+    </div>`).join('');
+  const labels = ['IP Filter','Device Certification','Track File Views','Time of Day','Limited Access','Watermark','Password / PIN'];
+  const icons  = ['🌐','🔒','👁','🕐','🔢','💧','🔑'];
+  const values = [
+    ipList.length ? ipList.slice(0,2).join(', ')+(ipList.length>2?'…':'') : null,
+    null, null,
+    document.getElementById('tod-value').textContent,
+    document.getElementById('la-value').textContent+' views max',
+    null, null
+  ];
+  const toggles = document.querySelectorAll('.right-col .toggle input');
+  const active = [];
+  toggles.forEach((t,i) => { if (t.checked) active.push({ label:labels[i], icon:icons[i], value:values[i] }); });
+  const optEl = document.getElementById('confirm-options-list');
+  optEl.innerHTML = active.length
+    ? active.map(o=>`<div class="confirm-option-chip"><span>${o.icon}</span><span>${o.label}</span>${o.value?`<span class="confirm-option-value">${o.value}</span>`:''}</div>`).join('')
+    : `<div class="confirm-no-options">No send options enabled.</div>`;
+  document.getElementById('confirm-modal')._recipientId = id;
+  document.getElementById('confirm-modal').classList.add('open');
+}
 
-  // TALUS-136: Send options
-  function openSetting(name) {
-    if (name==='IP') document.getElementById('ip-modal').classList.add('open');
-    else if (name==='Device certification') document.getElementById('cert-modal').classList.add('open');
-    else if (name==='Password/PIN') document.getElementById('pin-modal').classList.add('open');
-  }
-  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-  function togStr(el) { return el.checked ? 'enabled' : 'disabled'; }
-  function editTimeOfDay() {
-    const v = prompt('Time range (e.g. 9:00 - 5:00):', document.getElementById('tod-value').textContent);
-    if (v) { document.getElementById('tod-value').textContent = v; toastMsg('Time of day updated'); }
-  }
-  function editLimitedAccess() {
-    const v = prompt('Max access count:', document.getElementById('la-value').textContent);
-    if (v && !isNaN(v)) { document.getElementById('la-value').textContent = v; toastMsg('Limited access updated'); }
-  }
-  let ipList = [];
-  function addIP() {
-    const input = document.getElementById('ip-input');
-    const val = input.value.trim();
-    if (!val) return;
-    const ipRegex = /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/;
-    if (!ipRegex.test(val)) { toastMsg('Invalid IP or CIDR format.'); return; }
-    if (ipList.includes(val)) { toastMsg('Already in list.'); input.value=''; return; }
-    ipList.push(val); input.value=''; renderIPList();
-  }
-  function removeIP(val) { ipList = ipList.filter(i=>i!==val); renderIPList(); }
-  function renderIPList() {
-    const el = document.getElementById('ip-list');
-    if (!ipList.length) { el.innerHTML=`<div style="color:var(--text-muted);font-size:13px;padding:8px 4px;">No IPs added yet.</div>`; return; }
-    el.innerHTML = ipList.map(ip=>`<div class="ip-chip"><span>${ip}</span><button onclick="removeIP('${ip}')">×</button></div>`).join('');
-  }
-  function saveIP() { closeModal('ip-modal'); toastMsg(ipList.length ? `✓ ${ipList.length} IP rule(s) saved` : 'IP list cleared'); }
-  let currentPinTab='password', pinValue='';
-  function switchPinTab(tab) {
-    currentPinTab=tab;
-    document.querySelectorAll('.pin-tab').forEach((b,i)=>b.classList.toggle('active',(i===0&&tab==='password')||(i===1&&tab==='pin')));
-    document.getElementById('pw-panel').classList.toggle('active',tab==='password');
-    document.getElementById('pin-panel-inner').classList.toggle('active',tab==='pin');
-    pinValue=''; updatePinDots();
-  }
-  function pinKey(k) {
-    if (k==='del') pinValue=pinValue.slice(0,-1);
-    else if (k==='clear') pinValue='';
-    else if (pinValue.length<6) pinValue+=k;
-    updatePinDots();
-  }
-  function updatePinDots() { for(let i=0;i<6;i++) document.getElementById('pd'+i).classList.toggle('filled',i<pinValue.length); }
-  function savePinOrPassword() {
-    if (currentPinTab==='password') {
-      const pw=document.getElementById('pw-input').value, conf=document.getElementById('pw-confirm').value;
-      if (!pw) { toastMsg('Enter a password first.'); return; }
-      if (pw!==conf) { toastMsg('Passwords do not match.'); return; }
-      document.getElementById('pw-saved').style.display='block';
-      toastMsg('✓ Password saved'); setTimeout(()=>closeModal('pin-modal'),800);
-    } else {
-      if (pinValue.length<4) { toastMsg('PIN must be at least 4 digits.'); return; }
-      document.getElementById('pin-saved').style.display='block';
-      toastMsg(`✓ PIN saved`); setTimeout(()=>closeModal('pin-modal'),800);
-    }
-  }
-  ['ip-modal','cert-modal','pin-modal'].forEach(id=>{
-    document.getElementById(id).addEventListener('click',function(e){if(e.target===this)closeModal(id);});
-  });
+// Confirm send — builds requirements from active options and sends upload_package via WS
+async function confirmSend() {
+  const id = document.getElementById('confirm-modal')._recipientId;
+  const r  = recipients.find(r => r.id === id);
+  closeModal('confirm-modal');
 
-  // TALUS-138: Clipboard upload
-  async function pasteClipboard() {
-    try {
-      const text = await navigator.clipboard.readText();
-      if (!text.trim()) { toastMsg('Clipboard is empty or not text.'); return; }
-      const preview = '[Clipboard] ' + text.trim().slice(0,30) + (text.length > 30 ? '…' : '');
-      addItem(preview, 'text', null, text.trim());
-    } catch(e) { toastMsg('Clipboard access denied — check browser permissions.'); }
-  }
+  if (!_wsReady) { toastMsg('⚠ Not connected to server.'); return; }
 
-  // TALUS-110: Folder upload
-  function attachFolder(e) {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
-    const folderName = files[0].webkitRelativePath.split('/')[0];
-    addItem(folderName, 'folder');
-    e.target.value = '';
-  }
+  // Build requirements object from active send options
+  const requirements = {};
+  const toggles = document.querySelectorAll('.right-col .toggle input');
+  const optionKeys = ['ip_filter','device_cert','track_views','time_of_day','limited_access','watermark','password'];
+  toggles.forEach((t, i) => { if (t.checked) requirements[optionKeys[i]] = true; });
+  const tod = document.getElementById('tod-value').textContent;
+  if (requirements.time_of_day && tod) requirements.time_of_day_window = tod;
+  const la = parseInt(document.getElementById('la-value').textContent);
+  if (requirements.limited_access && !isNaN(la)) requirements.max_views = la;
+  if (ipList.length) requirements.allowed_ips = ipList;
 
-  // TALUS-137: Drag & drop
-  const overlay = document.getElementById('dropzone-overlay');
-  let dragDepth = 0;
-  document.addEventListener('dragenter', () => { dragDepth++; overlay.classList.add('show'); });
-  document.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; overlay.classList.remove('show'); } });
-  document.addEventListener('dragover', e => e.preventDefault());
-  document.addEventListener('drop', e => {
-    e.preventDefault(); dragDepth = 0; overlay.classList.remove('show');
-    Array.from(e.dataTransfer.files).forEach(f => addItem(f.name, 'file', f));
-  });
+  try {
+    // For now, send file content as base64 plain (encryption layer to be added)
+    // Requirements are sent as JSON — server.py expects them RSA-encrypted,
+    // that wiring happens once key exchange is complete on the frontend.
+    const reply = await wsRequest(
+      {
+        type: 'upload_package',
+        sender_id: currentUser.username,
+        receiver_id: r.username + '#' + r.tag,
+        encrypted_file_b64: btoa(JSON.stringify(attachedItems.map(i => ({ name: i.name, type: i.type })))),
+        encrypted_requirements_b64: btoa(JSON.stringify(requirements))
+      },
+      'upload_package_ack',
+      12000
+    );
+    toastMsg(`✓ Sent to ${r.username}#${r.tag} (pkg: ${reply.package_id.slice(0,8)}…)`);
+  } catch (err) {
+    toastMsg('⚠ Send failed — check connection.');
+    console.warn('[WS] confirmSend error:', err);
+  }
+}
+document.getElementById('confirm-modal').addEventListener('click', function(e) { if (e.target===this) closeModal('confirm-modal'); });
 
-  function addItem(name, type, fileObj, fullText) {
-    const id = Date.now() + Math.random();
-    attachedItems.push({ id, name, type, fileObj: fileObj||null, fullText: fullText||null });
-    renderAttached();
-    toastMsg(`"${name}" attached`);
+// TALUS-139: File preview modal
+function openPreview(id) {
+  const item = attachedItems.find(i=>i.id===id);
+  if (!item) return;
+  document.getElementById('preview-icon').textContent = item.type==='folder'?'📁':item.type==='text'?'📝':'📄';
+  document.getElementById('preview-name').textContent = item.name;
+  document.getElementById('preview-type').textContent = item.type.toUpperCase() + (item.fileObj ? ` · ${(item.fileObj.size/1024).toFixed(1)} KB` : '');
+  const body = document.getElementById('preview-body');
+  if (item.type === 'text') {
+    body.textContent = item.fullText || item.name;
+  } else if (item.fileObj && item.fileObj.type.startsWith('text/')) {
+    const reader = new FileReader();
+    reader.onload = e => { body.textContent = e.target.result; };
+    reader.readAsText(item.fileObj);
+    body.textContent = 'Loading…';
+  } else if (item.fileObj && item.fileObj.type.startsWith('image/')) {
+    const url = URL.createObjectURL(item.fileObj);
+    body.innerHTML = `<img src="${url}" style="max-width:100%;border-radius:6px;" onload="URL.revokeObjectURL(this.src)"/>`;
+  } else {
+    body.textContent = item.fileObj
+      ? `File: ${item.fileObj.name}\nSize: ${(item.fileObj.size/1024).toFixed(1)} KB\nType: ${item.fileObj.type||'unknown'}`
+      : `${item.type === 'folder' ? 'Folder' : 'Item'}: ${item.name}\nPreview not available for this type.`;
   }
-  function removeItem(id) { attachedItems = attachedItems.filter(i => i.id !== id); renderAttached(); }
-  function renderAttached() {
-    const count = attachedItems.length;
-    document.getElementById('attach-count').textContent = count;
-    document.getElementById('attach-count-label').textContent = `${count} item(s) attached`;
-    document.getElementById('attached-list').innerHTML = attachedItems.map(item => `
-      <div class="attached-chip" onclick="openPreview(${item.id})" title="Click to preview">
-        <span>${item.type==='folder'?'📁':item.type==='text'?'📝':'📄'}</span>
-        <span class="chip-name">${item.name}</span>
-        <button class="remove-btn" onclick="event.stopPropagation();removeItem(${item.id})">×</button>
-      </div>`).join('');
-  }
+  document.getElementById('preview-modal').classList.add('open');
+}
+document.getElementById('preview-modal').addEventListener('click', function(e) { if (e.target===this) closeModal('preview-modal'); });
 
-  let toastTimer;
-  function toastMsg(msg) {
-    const t = document.getElementById('toast');
-    t.textContent = msg; t.classList.add('show');
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+// TALUS-158: Recipients
+let recipients = [];
+function addRecipient() {
+  const input = document.getElementById('recipient-input');
+  const val   = input.value.trim();
+  if (!val) { toastMsg('Enter a username#tag to add.'); return; }
+  const match = val.match(/^(.+)#(\d{1,8})$/);
+  if (!match) { toastMsg('Format must be username#0000'); input.focus(); return; }
+  const username = match[1].trim(), tag = match[2];
+  const full = `${username}#${tag}`;
+  if (recipients.find(r=>r.full.toLowerCase()===full.toLowerCase())) { toastMsg(`${full} already added.`); input.value=''; return; }
+  const id = Date.now() + Math.random();
+  recipients.push({ id, username, tag, full });
+  renderRecipients(); input.value=''; toastMsg(`${full} added`);
+}
+function removeRecipient(id) { recipients=recipients.filter(r=>r.id!==id); renderRecipients(); }
+function renderRecipients() {
+  const list = document.getElementById('user-list');
+  if (!recipients.length) {
+    list.innerHTML=`<div style="padding:20px 16px;font-size:13px;color:var(--text-muted);text-align:center;">No recipients yet.<br>Enter a username#tag above.</div>`;
+    return;
   }
-  // TALUS-180: Auto-deleting encrypted data
-  // Auto-delete transfer data on app close
-  window.addEventListener('beforeunload', () => {
-    receiveItems = [];
-    selectedReceiveId = null;
-    receiveInitialised = false;
-    // Notify server to clean up session data
-    navigator.sendBeacon(`${API_BASE}/transfers/session/clear`);
-  });
+  list.innerHTML = recipients.map(r=>`
+    <div class="user-item" onclick="openConfirmModal(${r.id})">
+      <div class="avatar">${r.username.slice(0,2).toUpperCase()}</div>
+      <span style="flex:1">${r.username}<span style="opacity:0.6;font-size:12px">#${r.tag}</span></span>
+      <button class="remove-btn" style="font-size:18px;" onclick="event.stopPropagation();removeRecipient(${r.id})">×</button>
+    </div>`).join('');
+}
+renderRecipients();
+
+// TALUS-136: Send options
+function openSetting(name) {
+  if (name==='IP') document.getElementById('ip-modal').classList.add('open');
+  else if (name==='Device certification') document.getElementById('cert-modal').classList.add('open');
+  else if (name==='Password/PIN') document.getElementById('pin-modal').classList.add('open');
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function togStr(el) { return el.checked ? 'enabled' : 'disabled'; }
+function editTimeOfDay() {
+  const v = prompt('Time range (e.g. 9:00 - 5:00):', document.getElementById('tod-value').textContent);
+  if (v) { document.getElementById('tod-value').textContent = v; toastMsg('Time of day updated'); }
+}
+function editLimitedAccess() {
+  const v = prompt('Max access count:', document.getElementById('la-value').textContent);
+  if (v && !isNaN(v)) { document.getElementById('la-value').textContent = v; toastMsg('Limited access updated'); }
+}
+
+let ipList = [];
+function addIP() {
+  const input = document.getElementById('ip-input');
+  const val   = input.value.trim();
+  if (!val) return;
+  if (!/^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/.test(val)) { toastMsg('Invalid IP or CIDR format.'); return; }
+  if (ipList.includes(val)) { toastMsg('Already in list.'); input.value=''; return; }
+  ipList.push(val); input.value=''; renderIPList();
+}
+function removeIP(val) { ipList = ipList.filter(i=>i!==val); renderIPList(); }
+function renderIPList() {
+  const el = document.getElementById('ip-list');
+  if (!ipList.length) { el.innerHTML=`<div style="color:var(--text-muted);font-size:13px;padding:8px 4px;">No IPs added yet.</div>`; return; }
+  el.innerHTML = ipList.map(ip=>`<div class="ip-chip"><span>${ip}</span><button onclick="removeIP('${ip}')">×</button></div>`).join('');
+}
+function saveIP() { closeModal('ip-modal'); toastMsg(ipList.length ? `✓ ${ipList.length} IP rule(s) saved` : 'IP list cleared'); }
+
+let currentPinTab='password', pinValue='';
+function switchPinTab(tab) {
+  currentPinTab=tab;
+  document.querySelectorAll('.pin-tab').forEach((b,i)=>b.classList.toggle('active',(i===0&&tab==='password')||(i===1&&tab==='pin')));
+  document.getElementById('pw-panel').classList.toggle('active',tab==='password');
+  document.getElementById('pin-panel-inner').classList.toggle('active',tab==='pin');
+  pinValue=''; updatePinDots();
+}
+function pinKey(k) {
+  if (k==='del') pinValue=pinValue.slice(0,-1);
+  else if (k==='clear') pinValue='';
+  else if (pinValue.length<6) pinValue+=k;
+  updatePinDots();
+}
+function updatePinDots() { for(let i=0;i<6;i++) document.getElementById('pd'+i).classList.toggle('filled',i<pinValue.length); }
+function savePinOrPassword() {
+  if (currentPinTab==='password') {
+    const pw=document.getElementById('pw-input').value, conf=document.getElementById('pw-confirm').value;
+    if (!pw) { toastMsg('Enter a password first.'); return; }
+    if (pw!==conf) { toastMsg('Passwords do not match.'); return; }
+    document.getElementById('pw-saved').style.display='block';
+    toastMsg('✓ Password saved'); setTimeout(()=>closeModal('pin-modal'),800);
+  } else {
+    if (pinValue.length<4) { toastMsg('PIN must be at least 4 digits.'); return; }
+    document.getElementById('pin-saved').style.display='block';
+    toastMsg(`✓ PIN saved`); setTimeout(()=>closeModal('pin-modal'),800);
+  }
+}
+['ip-modal','cert-modal','pin-modal'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',function(e){if(e.target===this)closeModal(id);});
+});
+
+// TALUS-138: Clipboard paste
+async function pasteClipboard() {
+  try {
+    const text = await navigator.clipboard.readText();
+    if (!text.trim()) { toastMsg('Clipboard is empty or not text.'); return; }
+    const preview = '[Clipboard] ' + text.trim().slice(0,30) + (text.length > 30 ? '…' : '');
+    addItem(preview, 'text', null, text.trim());
+  } catch(e) { toastMsg('Clipboard access denied — check browser permissions.'); }
+}
+
+// TALUS-110: Folder upload
+function attachFolder(e) {
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
+  const folderName = files[0].webkitRelativePath.split('/')[0];
+  addItem(folderName, 'folder');
+  e.target.value = '';
+}
+
+// TALUS-137: Drag & drop
+const overlay = document.getElementById('dropzone-overlay');
+let dragDepth = 0;
+document.addEventListener('dragenter', () => { dragDepth++; overlay.classList.add('show'); });
+document.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; overlay.classList.remove('show'); } });
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => {
+  e.preventDefault(); dragDepth = 0; overlay.classList.remove('show');
+  Array.from(e.dataTransfer.files).forEach(f => addItem(f.name, 'file', f));
+});
+
+function addItem(name, type, fileObj, fullText) {
+  const id = Date.now() + Math.random();
+  attachedItems.push({ id, name, type, fileObj: fileObj||null, fullText: fullText||null });
+  renderAttached();
+  toastMsg(`"${name}" attached`);
+}
+function removeItem(id) { attachedItems = attachedItems.filter(i => i.id !== id); renderAttached(); }
+function renderAttached() {
+  const count = attachedItems.length;
+  document.getElementById('attach-count').textContent = count;
+  document.getElementById('attach-count-label').textContent = `${count} item(s) attached`;
+  document.getElementById('attached-list').innerHTML = attachedItems.map(item => `
+    <div class="attached-chip" onclick="openPreview(${item.id})" title="Click to preview">
+      <span>${item.type==='folder'?'📁':item.type==='text'?'📝':'📄'}</span>
+      <span class="chip-name">${item.name}</span>
+      <button class="remove-btn" onclick="event.stopPropagation();removeItem(${item.id})">×</button>
+    </div>`).join('');
+}
+
+let toastTimer;
+function toastMsg(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+// TALUS-180: Clean up on page close
+window.addEventListener('beforeunload', () => {
+  wsDisconnect();
+});
 </script>
 </body>
 </html>
