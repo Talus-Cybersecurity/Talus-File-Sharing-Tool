@@ -9,6 +9,7 @@
     :root { --teal-dark:#0d6e6e;--teal-mid:#117a7a;--teal-accent:#14b8b8;--teal-light:#d0eaea;--teal-pale:#e8f4f4;--bg:#f0f7f7;--surface:#ffffff;--surface-2:#dceaea;--text-main:#1a2e2e;--text-muted:#5a7a7a;--border:#b0d0d0;--radius-sm:10px;--radius-md:16px;--header-h:62px; }
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
     html,body{height:100%;width:100%;overflow:hidden;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text-main);}
+    @keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
     @keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
     .shell{display:grid;grid-template-rows:var(--header-h) 1fr;grid-template-columns:1fr;grid-template-areas:"header""main";height:100vh;width:100vw;}
     header{grid-area:header;background:var(--teal-dark);display:flex;align-items:center;padding:0 28px;gap:16px;border-bottom:2px solid rgba(255,255,255,0.08);z-index:10;}
@@ -236,6 +237,22 @@
     .register-success-icon{font-size:42px;margin-bottom:10px;}
     .register-success-title{font-size:18px;font-weight:700;color:var(--teal-dark);margin-bottom:6px;}
     .register-success-sub{font-size:13px;color:var(--text-muted);line-height:1.5;}
+    /* Email verification screen */
+    .verify-screen{position:fixed;inset:0;z-index:1002;background:var(--teal-dark);display:flex;align-items:center;justify-content:center;}
+    .verify-screen.hidden{display:none;}
+    .verify-box{position:relative;z-index:1;background:var(--surface);border-radius:24px;padding:44px 40px 36px;width:420px;max-width:94vw;box-shadow:0 24px 80px rgba(0,0,0,0.28);animation:slideUp 0.3s ease;}
+    .verify-icon{font-size:40px;text-align:center;margin-bottom:12px;}
+    .verify-title{font-family:'Space Mono',monospace;font-size:18px;font-weight:700;color:var(--teal-dark);text-align:center;margin-bottom:6px;}
+    .verify-sub{font-size:13px;color:var(--text-muted);text-align:center;line-height:1.6;margin-bottom:28px;}
+    .verify-sub strong{color:var(--text-main);}
+    .verify-code-row{display:flex;gap:8px;justify-content:center;margin-bottom:6px;}
+    .verify-code-row input{width:44px;height:52px;text-align:center;font-family:'Space Mono',monospace;font-size:22px;font-weight:700;color:var(--teal-dark);border:2px solid var(--border);border-radius:10px;background:var(--teal-pale);outline:none;transition:border-color 0.15s,box-shadow 0.15s;caret-color:transparent;}
+    .verify-code-row input:focus{border-color:var(--teal-accent);box-shadow:0 0 0 3px rgba(0,128,128,0.12);}
+    .verify-code-row input.filled{border-color:var(--teal-dark);}
+    .verify-resend{text-align:center;font-size:13px;color:var(--text-muted);margin-top:14px;}
+    .verify-resend button{background:none;border:none;cursor:pointer;color:var(--teal-dark);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;padding:0;transition:opacity 0.15s;}
+    .verify-resend button:disabled{opacity:0.4;cursor:default;}
+    .verify-countdown{font-family:'Space Mono',monospace;font-size:12px;color:var(--text-muted);}
   </style>
 </head>
 <body>
@@ -270,9 +287,10 @@
         <label>Tag ID <span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--text-muted);text-transform:none;letter-spacing:0;">(1–4 digits)</span></label>
         <div class="register-tag-row">
           <span class="register-tag-hint">#</span>
-          <input type="text" id="reg-tag" placeholder="e.g. 4821" maxlength="4" autocomplete="off" style="flex:1;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:'Space Mono',monospace;font-size:14px;color:var(--text-main);background:var(--teal-pale);outline:none;transition:border-color 0.18s;" onfocus="this.style.borderColor='var(--teal-accent)'" onblur="this.style.borderColor='var(--border)'" onkeydown="if(event.key==='Enter') document.getElementById('reg-password').focus()"/>
+          <input type="text" id="reg-tag" placeholder="e.g. 4821" maxlength="4" autocomplete="off" style="flex:1;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:'Space Mono',monospace;font-size:14px;color:var(--text-main);background:var(--teal-pale);outline:none;transition:border-color 0.18s;" onfocus="this.style.borderColor='var(--teal-accent)'" onblur="this.style.borderColor='var(--border)'" onkeydown="if(event.key==='Enter') document.getElementById('reg-email').focus()"/>
         </div>
       </div>
+      <div class="login-field"><label>Email</label><input type="email" id="reg-email" placeholder="your@email.com" autocomplete="email" onkeydown="if(event.key==='Enter') document.getElementById('reg-password').focus()"/></div>
       <div class="login-field"><label>Password</label><input type="password" id="reg-password" placeholder="Create a password" autocomplete="new-password" onkeydown="if(event.key==='Enter') document.getElementById('reg-confirm').focus()"/></div>
       <div class="login-field"><label>Confirm Password</label><input type="password" id="reg-confirm" placeholder="Re-enter your password" autocomplete="new-password" onkeydown="if(event.key==='Enter') doRegister()"/></div>
       <div class="login-error" id="register-error"></div>
@@ -285,6 +303,30 @@
         <div class="register-success-sub" id="register-success-msg"></div>
       </div>
       <button class="login-btn" onclick="closeRegister()" style="margin-top:24px;">Go to Sign In</button>
+    </div>
+  </div>
+</div>
+
+<!-- Email verification screen -->
+<div class="verify-screen hidden" id="verify-screen">
+  <div class="register-bg-pattern"></div>
+  <div class="verify-box">
+    <div class="verify-icon">📧</div>
+    <div class="verify-title">Check your email</div>
+    <div class="verify-sub">We sent a 6-digit code to<br><strong id="verify-email-display"></strong></div>
+    <div class="verify-code-row">
+      <input type="text" class="vcode" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
+      <input type="text" class="vcode" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
+      <input type="text" class="vcode" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
+      <input type="text" class="vcode" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
+      <input type="text" class="vcode" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
+      <input type="text" class="vcode" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
+    </div>
+    <div class="login-error" id="verify-error"></div>
+    <button class="login-btn" id="verify-submit-btn" onclick="doVerifyEmail()" style="margin-top:16px;" disabled>Verify Email</button>
+    <div class="verify-resend">
+      Didn't get it? <button id="verify-resend-btn" onclick="doResendCode()">Resend code</button>
+      <span class="verify-countdown" id="verify-countdown"></span>
     </div>
   </div>
 </div>
@@ -792,7 +834,7 @@ function openRegister() {
   document.getElementById('register-screen').classList.remove('hidden');
   document.getElementById('register-form-body').style.display = '';
   document.getElementById('register-success-body').style.display = 'none';
-  ['reg-username','reg-tag','reg-password','reg-confirm'].forEach(id => document.getElementById(id).value = '');
+  ['reg-username','reg-tag','reg-email','reg-password','reg-confirm'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('register-error').textContent = '';
   setTimeout(() => document.getElementById('reg-username').focus(), 100);
 }
@@ -803,22 +845,23 @@ function closeRegister() {
 async function doRegister() {
   const username = document.getElementById('reg-username').value.trim();
   const tag      = document.getElementById('reg-tag').value.trim();
+  const email    = document.getElementById('reg-email').value.trim();
   const password = document.getElementById('reg-password').value;
   const confirm  = document.getElementById('reg-confirm').value;
   const errEl    = document.getElementById('register-error');
   errEl.textContent = '';
 
-  if (!username)               { errEl.textContent = 'Please enter a username.'; return; }
-  if (!/^\d{1,4}$/.test(tag))  { errEl.textContent = 'Tag ID must be 1–4 digits.'; return; }
-  if (!password)               { errEl.textContent = 'Please enter a password.'; return; }
-  if (password.length < 6)     { errEl.textContent = 'Password must be at least 6 characters.'; return; }
-  if (password !== confirm)    { errEl.textContent = 'Passwords do not match.'; return; }
+  if (!username)                          { errEl.textContent = 'Please enter a username.'; return; }
+  if (!/^\d{1,4}$/.test(tag))             { errEl.textContent = 'Tag ID must be 1–4 digits.'; return; }
+  if (!email || !email.includes('@'))     { errEl.textContent = 'Please enter a valid email.'; return; }
+  if (!password)                          { errEl.textContent = 'Please enter a password.'; return; }
+  if (password.length < 6)               { errEl.textContent = 'Password must be at least 6 characters.'; return; }
+  if (password !== confirm)              { errEl.textContent = 'Passwords do not match.'; return; }
 
   const btn = document.querySelector('#register-form-body .login-btn');
   btn.textContent = 'Creating…'; btn.disabled = true;
 
   try {
-    // create_account uses a short-lived connection (user isn't logged in yet)
     const tempWs = new WebSocket(WS_URL);
 
     // ── Connection failure ────────────────────────────────────────────
@@ -827,21 +870,19 @@ async function doRegister() {
       tempWs.onerror = () => rej(new Error('NO_SERVER'));
     });
 
-    // ── Send credentials, wait for response or timeout ────────────────
+    // ── Send credentials + email, wait for response or timeout ────────
     const reply = await new Promise((res, rej) => {
       const t = setTimeout(() => rej(new Error('TIMEOUT')), 8000);
       tempWs.onmessage = e => { clearTimeout(t); res(JSON.parse(e.data)); };
       tempWs.onerror   = () => { clearTimeout(t); rej(new Error('CONNECTION_ERROR')); };
-      tempWs.send(JSON.stringify({ type: 'create_account', username, password, tag_id: tag }));
+      tempWs.send(JSON.stringify({ type: 'create_account', username, password, tag_id: tag, email }));
     });
     tempWs.close();
 
-    // ── Success ───────────────────────────────────────────────────────
+    // ── Success — move to email verification screen ───────────────────
     if (reply.type === 'create_account_ack') {
-      document.getElementById('register-form-body').style.display = 'none';
-      document.getElementById('register-success-body').style.display = '';
-      document.getElementById('register-success-msg').textContent =
-        `Welcome, ${username}#${tag}! You can now sign in.`;
+      document.getElementById('register-screen').classList.add('hidden');
+      openVerifyScreen(username, email);
       return;
     }
 
@@ -859,6 +900,190 @@ async function doRegister() {
   } finally {
     btn.textContent = 'Create Account'; btn.disabled = false;
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// EMAIL VERIFICATION
+// ═══════════════════════════════════════════════════════════════════════
+
+let _verifyUsername = null;
+let _verifyEmail    = null;
+let _resendTimer    = null;
+let _resendSeconds  = 0;
+
+function openVerifyScreen(username, email) {
+  _verifyUsername = username;
+  _verifyEmail    = email;
+
+  // Reset all 6 digit inputs
+  document.querySelectorAll('.vcode').forEach(i => { i.value = ''; i.classList.remove('filled'); });
+  document.getElementById('verify-error').textContent = '';
+  document.getElementById('verify-submit-btn').disabled = true;
+  document.getElementById('verify-email-display').textContent = email;
+  document.getElementById('verify-screen').classList.remove('hidden');
+
+  // Wire up the digit inputs
+  _initCodeInputs();
+
+  // Start resend countdown (60s)
+  _startResendCountdown(60);
+
+  setTimeout(() => document.querySelectorAll('.vcode')[0].focus(), 100);
+}
+
+function _initCodeInputs() {
+  const inputs = Array.from(document.querySelectorAll('.vcode'));
+  inputs.forEach((input, i) => {
+    input.oninput = () => {
+      // Only allow digits
+      input.value = input.value.replace(/\D/g, '');
+      input.classList.toggle('filled', input.value.length === 1);
+      if (input.value.length === 1 && i < inputs.length - 1) {
+        inputs[i + 1].focus();
+      }
+      // Enable submit once all 6 filled
+      document.getElementById('verify-submit-btn').disabled =
+        inputs.some(inp => inp.value.length !== 1);
+    };
+    input.onkeydown = (e) => {
+      if (e.key === 'Backspace' && !input.value && i > 0) {
+        inputs[i - 1].focus();
+        inputs[i - 1].value = '';
+        inputs[i - 1].classList.remove('filled');
+      }
+      if (e.key === 'Enter') doVerifyEmail();
+    };
+    // Allow pasting a full 6-digit code into the first box
+    input.onpaste = (e) => {
+      const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g,'').slice(0,6);
+      if (pasted.length === 6) {
+        e.preventDefault();
+        inputs.forEach((inp, idx) => {
+          inp.value = pasted[idx] || '';
+          inp.classList.toggle('filled', !!inp.value);
+        });
+        document.getElementById('verify-submit-btn').disabled = false;
+        inputs[5].focus();
+      }
+    };
+  });
+}
+
+function _getCode() {
+  return Array.from(document.querySelectorAll('.vcode')).map(i => i.value).join('');
+}
+
+function _startResendCountdown(seconds) {
+  const btn       = document.getElementById('verify-resend-btn');
+  const countdown = document.getElementById('verify-countdown');
+  btn.disabled    = true;
+  _resendSeconds  = seconds;
+  clearInterval(_resendTimer);
+  _resendTimer = setInterval(() => {
+    _resendSeconds--;
+    countdown.textContent = `(${_resendSeconds}s)`;
+    if (_resendSeconds <= 0) {
+      clearInterval(_resendTimer);
+      btn.disabled = false;
+      countdown.textContent = '';
+    }
+  }, 1000);
+}
+
+async function doVerifyEmail() {
+  const code  = _getCode();
+  const errEl = document.getElementById('verify-error');
+  errEl.textContent = '';
+  if (code.length !== 6) { errEl.textContent = 'Please enter all 6 digits.'; return; }
+
+  const btn = document.getElementById('verify-submit-btn');
+  btn.textContent = 'Verifying…'; btn.disabled = true;
+
+  try {
+    const tempWs = new WebSocket(WS_URL);
+    await new Promise((res, rej) => {
+      tempWs.onopen  = res;
+      tempWs.onerror = () => rej(new Error('NO_SERVER'));
+    });
+    const reply = await new Promise((res, rej) => {
+      const t = setTimeout(() => rej(new Error('TIMEOUT')), 8000);
+      tempWs.onmessage = e => { clearTimeout(t); res(JSON.parse(e.data)); };
+      tempWs.onerror   = () => { clearTimeout(t); rej(new Error('CONNECTION_ERROR')); };
+      tempWs.send(JSON.stringify({ type: 'verify_email', username: _verifyUsername, code }));
+    });
+    tempWs.close();
+
+    if (reply.type === 'verify_email_ack') {
+      _closeVerifyScreen();
+      // Show success on the register screen briefly then go to login
+      document.getElementById('register-screen').classList.remove('hidden');
+      document.getElementById('register-form-body').style.display = 'none';
+      document.getElementById('register-success-body').style.display = '';
+      document.getElementById('register-success-msg').textContent =
+        `Email verified! Welcome, ${_verifyUsername}. You can now sign in.`;
+      return;
+    }
+
+    // Wrong code / expired
+    errEl.textContent = reply.message || 'Incorrect code — please try again.';
+    // Shake the inputs
+    const row = document.querySelector('.verify-code-row');
+    row.style.animation = 'none';
+    row.offsetHeight; // reflow
+    row.style.animation = 'shake 0.35s ease';
+
+  } catch (err) {
+    if (err.message === 'TIMEOUT') {
+      errEl.textContent = 'Server timed out — please try again.';
+    } else if (err.message === 'NO_SERVER') {
+      errEl.textContent = 'Cannot reach server. Is it running?';
+    } else {
+      errEl.textContent = 'Connection error — please try again.';
+    }
+  } finally {
+    btn.textContent = 'Verify Email';
+    btn.disabled = _getCode().length !== 6;
+  }
+}
+
+async function doResendCode() {
+  const errEl = document.getElementById('verify-error');
+  errEl.textContent = '';
+
+  try {
+    const tempWs = new WebSocket(WS_URL);
+    await new Promise((res, rej) => {
+      tempWs.onopen  = res;
+      tempWs.onerror = () => rej(new Error('NO_SERVER'));
+    });
+    const reply = await new Promise((res, rej) => {
+      const t = setTimeout(() => rej(new Error('TIMEOUT')), 8000);
+      tempWs.onmessage = e => { clearTimeout(t); res(JSON.parse(e.data)); };
+      tempWs.onerror   = () => { clearTimeout(t); rej(new Error('CONNECTION_ERROR')); };
+      tempWs.send(JSON.stringify({ type: 'resend_verification', username: _verifyUsername }));
+    });
+    tempWs.close();
+
+    if (reply.type === 'resend_verification_ack') {
+      toastMsg('✉ New code sent — check your email.');
+      _startResendCountdown(60);
+    } else {
+      errEl.textContent = reply.message || 'Could not resend — please try again.';
+    }
+  } catch (err) {
+    if (err.message === 'NO_SERVER') {
+      errEl.textContent = 'Cannot reach server. Is it running?';
+    } else {
+      errEl.textContent = 'Could not resend — please try again.';
+    }
+  }
+}
+
+function _closeVerifyScreen() {
+  clearInterval(_resendTimer);
+  document.getElementById('verify-screen').classList.add('hidden');
+  _verifyUsername = null;
+  _verifyEmail    = null;
 }
 
 // ═══════════════════════════════════════════════════════════════════════
