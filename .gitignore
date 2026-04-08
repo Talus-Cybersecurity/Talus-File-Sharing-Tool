@@ -2,4 +2,8 @@
 __pycache__/
 *.pyc
 uploads/
-*.enc
+*.encCLAUDE.md
+cert.pem
+key.pem
+server_private.pem
+server_public.pem
