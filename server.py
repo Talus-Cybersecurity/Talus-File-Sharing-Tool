@@ -370,49 +370,72 @@ def validate_receiver_against_requirements(
 
     return True, None
 
+# TALUS-194: Detect if incoming is file access request
+def is_file_access_request(data: dict) -> tuple[bool, str | None]:
+    if data.get("type") != "request_file_access":
+        return False, f"type is '{data.get('type')}', expected 'request_file_access'"
+    for field in ("receiver_id", "package_id", "encrypted_receiver_metadata_b64"):
+        value = data.get(field)
+        if not isinstance(value, str) or not value.strip():
+            return False, f"Missing or empty required field: '{field}'"
+    package = packages.get(data["package_id"])
+    if package is None:
+        return False, f"Unknown package_id: '{data['package_id']}'"
+    if package.receiver_id != data["receiver_id"]:
+        return False, f"receiver_id '{data['receiver_id']}' is not authorized for this package"
+    return True, None
+    
 async def handle_request_file_access(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
+    valid, reason = is_file_access_request(data)
+    if not valid:
+        logging.warning("Rejected file access request: %s", reason)
+        await send_json(ws, {"type": "error", "message": reason})
+        return
+ 
     receiver_id = data["receiver_id"]
-    package_id = data["package_id"]
-    encrypted_receiver_metadata_b64 = data["encrypted_receiver_metadata_b64"]
-
-    package = packages.get(package_id)
-    if not package:
-        await send_json(ws, {
-            "type": "error",
-            "message": f"Unknown package '{package_id}'"
-        })
-        return
-
-    if package.receiver_id != receiver_id:
-        await send_json(ws, {
-            "type": "error",
-            "message": "Receiver is not authorized for this package"
-        })
-        return
-
+    package_id  = data["package_id"]
+    package = packages[package_id]  # guaranteed to exist after gate
+ 
     if receiver_id not in receiver_session_keys:
-        await send_json(ws, {
-            "type": "error",
-            "message": "No server-receiver session key found"
-        })
+        await send_json(ws, {"type": "error", "message": "No server-receiver session key found"})
         return
-
+ 
     session_key = receiver_session_keys[receiver_id]
-
-    receiver_metadata = json.loads(
-        fernet_decrypt(session_key, decode_b64(encrypted_receiver_metadata_b64)).decode("utf-8")
-    )
-
+ 
+    try:
+        receiver_metadata = json.loads(
+            fernet_decrypt(session_key, decode_b64(data["encrypted_receiver_metadata_b64"])).decode("utf-8")
+        )
+    except Exception:
+        logging.exception("Failed to decrypt receiver metadata")
+        await send_json(ws, {"type": "error", "message": "Could not decrypt receiver metadata."})
+        return
+ 
     allowed, failed_field = validate_receiver_against_requirements(
         receiver_metadata,
         package.parsed_requirements or {}
     )
-
+ 
+    access_status = "granted" if allowed else f"denied:{failed_field}"
+ 
+    try:
+        db.insert_access_log(
+            log_id=str(uuid.uuid4()),
+            user_id=receiver_id,
+            file_id=package_id,
+            access_attempts=1,
+            timestamps=datetime.now(timezone.utc),
+            ip_address=receiver_metadata.get("ip_address"),
+            access_status=access_status
+        )
+    except Exception:
+        logging.exception("insert_access_log failed for package_id=%s", package_id)
+ 
     logging.info(
         "Access request package_id=%s receiver_id=%s allowed=%s failed_field=%s",
         package_id, receiver_id, allowed, failed_field
     )
-
+ 
     if allowed:
         await send_json(ws, {
             "type": "authorized_file_delivery",
@@ -426,12 +449,7 @@ async def handle_request_file_access(ws: WebSocketServerProtocol, data: Dict[str
             "failed_field": failed_field,
             "message": "Receiver metadata did not satisfy sender requirements."
         }
-
-        encrypted_error = fernet_encrypt(
-            session_key,
-            json.dumps(error_payload).encode("utf-8")
-        )
-
+        encrypted_error = fernet_encrypt(session_key, json.dumps(error_payload).encode("utf-8"))
         await send_json(ws, {
             "type": "authorization_denied",
             "encrypted_error_b64": encode_b64(encrypted_error)
