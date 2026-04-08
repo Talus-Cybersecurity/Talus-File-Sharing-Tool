@@ -299,21 +299,56 @@ async def handle_create_session_key(ws: WebSocketServerProtocol, data: Dict[str,
         "encrypted_session_key_b64": encode_b64(encrypted_key)
     })
 
+# TALUS-195 - Identify if incoming message is Sender File post, store files, and database requirements
+def is_sender_file_post(data: dict) -> tuple[bool, str | None]:
+    if data.get("type") != "upload_package":
+        return False, f"type is '{data.get('type')}', expected 'upload_package'"
+    for field in ("encrypted_file_b64", "encrypted_requirements_b64"):
+        value = data.get(field)
+        if not isinstance(value, str) or not value.strip():
+            return False, f"Missing or empty required field: '{field}'"
+    for field in ("sender_id", "receiver_id"):
+        value = data.get(field)
+        if not isinstance(value, str) or not value.strip():
+            return False, f"Missing or empty required field: '{field}'"
+    session = connected_clients.get(data["sender_id"])
+    if session is None:
+        return False, f"sender_id '{data['sender_id']}' is not a connected client"
+    if session.role != "sender":
+        return False, f"client '{data['sender_id']}' is role '{session.role}', expected 'sender'"
+    return True, None
+
+
 async def handle_upload_package(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
-    sender_id = data["sender_id"]
-    receiver_id = data["receiver_id"]
-    encrypted_file_b64 = data["encrypted_file_b64"]
+    valid, reason = is_sender_file_post(data)
+    if not valid:
+        logging.warning("Rejected sender file post: %s", reason)
+        await send_json(ws, {"type": "error", "message": reason})
+        return
+ 
+    sender_id                  = data["sender_id"]
+    receiver_id                = data["receiver_id"]
+    encrypted_file_b64         = data["encrypted_file_b64"]
     encrypted_requirements_b64 = data["encrypted_requirements_b64"]
+    file_name = data.get("file_name") or "unknown"
+    file_type = data.get("file_type") or "application/octet-stream"
+    file_size = data.get("file_size") or str(len(encrypted_file_b64)) + " bytes (enc)"
     upload_time = datetime.now(timezone.utc)
-
-    # Requirements are encrypted for the server per assignment design.
-    decrypted_requirements = rsa_decrypt_with_server_private_key(
-        decode_b64(encrypted_requirements_b64)
-    )
-    requirements = json.loads(decrypted_requirements.decode("utf-8"))
+ 
+    try:
+        requirements = json.loads(
+            rsa_decrypt_with_server_private_key(
+                decode_b64(encrypted_requirements_b64)
+            ).decode("utf-8")
+        )
+    except Exception:
+        logging.exception("Failed to decrypt requirements")
+        await send_json(ws, {"type": "error", "message": "Could not decrypt requirements."})
+        return
+ 
     package_id = str(uuid.uuid4())
-    log_id= str(uuid.uuid4())
-
+    policy_id  = str(uuid.uuid4())
+ 
     packages[package_id] = FilePackage(
         package_id=package_id,
         sender_id=sender_id,
@@ -323,29 +358,39 @@ async def handle_upload_package(ws: WebSocketServerProtocol, data: Dict[str, Any
         parsed_requirements=requirements,
         uploaded_at=upload_time
     )
-
-    # Add file to database
+ 
     db.insert_file(
         file_id=package_id,
         log_id=None,
         owner_id=sender_id,
-        file_type=None,
-        upload_timestamp=datetime.now(timezone.utc),
-        file_size=None,
-        file_name=None,
+        file_type=file_type,
+        upload_timestamp=upload_time,
+        file_size=file_size,
+        file_name=file_name,
         file_path=encrypted_file_b64
-        )
-
-    logging.info(
-        "Stored package_id=%s sender=%s receiver=%s",
-        package_id, sender_id, receiver_id
     )
-
-    await send_json(ws, {
-        "type": "upload_package_ack",
-        "package_id": package_id
-    })
-
+ 
+    try:
+        db.insert_file_policy(
+            policy_id=policy_id,
+            receiver_id=receiver_id,
+            file_id=package_id,
+            ip_address=requirements.get("ip_address"),
+            access_count=requirements.get("access_count"),
+            active_permissions=True,
+            device_verification=requirements.get("device_verification"),
+            location=requirements.get("location"),
+            account_info=None,
+            watermark=requirements.get("watermark"),
+            data_range=None,
+            time=upload_time,
+            biometrics=requirements.get("biometrics")
+        )
+    except Exception:
+        logging.exception("insert_file_policy failed for package_id=%s", package_id)
+ 
+    logging.info("Stored package_id=%s sender=%s receiver=%s", package_id, sender_id, receiver_id)
+    await send_json(ws, {"type": "upload_package_ack", "package_id": package_id})
 
 def validate_receiver_against_requirements(
     receiver_metadata: Dict[str, Any],
@@ -370,49 +415,72 @@ def validate_receiver_against_requirements(
 
     return True, None
 
+# TALUS-194: Detect if incoming is file access request
+def is_file_access_request(data: dict) -> tuple[bool, str | None]:
+    if data.get("type") != "request_file_access":
+        return False, f"type is '{data.get('type')}', expected 'request_file_access'"
+    for field in ("receiver_id", "package_id", "encrypted_receiver_metadata_b64"):
+        value = data.get(field)
+        if not isinstance(value, str) or not value.strip():
+            return False, f"Missing or empty required field: '{field}'"
+    package = packages.get(data["package_id"])
+    if package is None:
+        return False, f"Unknown package_id: '{data['package_id']}'"
+    if package.receiver_id != data["receiver_id"]:
+        return False, f"receiver_id '{data['receiver_id']}' is not authorized for this package"
+    return True, None
+    
 async def handle_request_file_access(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
+    valid, reason = is_file_access_request(data)
+    if not valid:
+        logging.warning("Rejected file access request: %s", reason)
+        await send_json(ws, {"type": "error", "message": reason})
+        return
+ 
     receiver_id = data["receiver_id"]
-    package_id = data["package_id"]
-    encrypted_receiver_metadata_b64 = data["encrypted_receiver_metadata_b64"]
-
-    package = packages.get(package_id)
-    if not package:
-        await send_json(ws, {
-            "type": "error",
-            "message": f"Unknown package '{package_id}'"
-        })
-        return
-
-    if package.receiver_id != receiver_id:
-        await send_json(ws, {
-            "type": "error",
-            "message": "Receiver is not authorized for this package"
-        })
-        return
-
+    package_id  = data["package_id"]
+    package = packages[package_id]  # guaranteed to exist after gate
+ 
     if receiver_id not in receiver_session_keys:
-        await send_json(ws, {
-            "type": "error",
-            "message": "No server-receiver session key found"
-        })
+        await send_json(ws, {"type": "error", "message": "No server-receiver session key found"})
         return
-
+ 
     session_key = receiver_session_keys[receiver_id]
-
-    receiver_metadata = json.loads(
-        fernet_decrypt(session_key, decode_b64(encrypted_receiver_metadata_b64)).decode("utf-8")
-    )
-
+ 
+    try:
+        receiver_metadata = json.loads(
+            fernet_decrypt(session_key, decode_b64(data["encrypted_receiver_metadata_b64"])).decode("utf-8")
+        )
+    except Exception:
+        logging.exception("Failed to decrypt receiver metadata")
+        await send_json(ws, {"type": "error", "message": "Could not decrypt receiver metadata."})
+        return
+ 
     allowed, failed_field = validate_receiver_against_requirements(
         receiver_metadata,
         package.parsed_requirements or {}
     )
-
+ 
+    access_status = "granted" if allowed else f"denied:{failed_field}"
+ 
+    try:
+        db.insert_access_log(
+            log_id=str(uuid.uuid4()),
+            user_id=receiver_id,
+            file_id=package_id,
+            access_attempts=1,
+            timestamps=datetime.now(timezone.utc),
+            ip_address=receiver_metadata.get("ip_address"),
+            access_status=access_status
+        )
+    except Exception:
+        logging.exception("insert_access_log failed for package_id=%s", package_id)
+ 
     logging.info(
         "Access request package_id=%s receiver_id=%s allowed=%s failed_field=%s",
         package_id, receiver_id, allowed, failed_field
     )
-
+ 
     if allowed:
         await send_json(ws, {
             "type": "authorized_file_delivery",
@@ -426,12 +494,7 @@ async def handle_request_file_access(ws: WebSocketServerProtocol, data: Dict[str
             "failed_field": failed_field,
             "message": "Receiver metadata did not satisfy sender requirements."
         }
-
-        encrypted_error = fernet_encrypt(
-            session_key,
-            json.dumps(error_payload).encode("utf-8")
-        )
-
+        encrypted_error = fernet_encrypt(session_key, json.dumps(error_payload).encode("utf-8"))
         await send_json(ws, {
             "type": "authorization_denied",
             "encrypted_error_b64": encode_b64(encrypted_error)
