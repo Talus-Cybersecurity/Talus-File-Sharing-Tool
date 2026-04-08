@@ -8,25 +8,16 @@ class Database:
     
     # When a user tries to log in, retrieve their account information from the database to 
     # verify their credentials
-    """
-    In server.py
-    if user tries to log in, then 
-    username.var = username
-    self.database.get_user(self, username.var)
-
-    """
-    # def check_username(self, username):
-    #     self.schema.cur.execute("""
-    #         SELECT username
-
-    #     """)
-    # def get_password(self, username):
-    #     self.schema.cur.execute("""
-    #         SELECT password 
-    #         FROM "User" 
-    #         WHERE username = %s
-    #      """, (username, ))
-    #     return self.schema.cur.fetchone()   # returns password
+    
+    def get_user_by_username(self, username: str):
+        # Returns (user_id, username, password_hash, tag_id) or None
+        # Used by handle_login() to verify credentials
+        self.schema.cur.execute("""
+            SELECT user_id, username, password, tag_id
+            FROM "User"
+            WHERE username = %s
+        """, (username,))
+        return self.schema.cur.fetchone()
 
 
     def check_if_user_exists(self, username):
