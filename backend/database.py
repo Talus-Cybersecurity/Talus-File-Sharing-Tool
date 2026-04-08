@@ -61,11 +61,20 @@ class Database:
         self.schema.con.commit()
 
     # Insert file policy information into the database when a user shares a file with another user
-    def insert_file_policy(self, policy_id, file_id, access_level, expiration_date):
+        def insert_file_policy(self, policy_id, receiver_id, file_id,
+            ip_address, access_count, active_permissions,
+            device_verification, location, account_info,
+            watermark, data_range, time, biometrics):
         self.schema.cur.execute("""
-            INSERT INTO "FilePolicy" (policy_id, file_id, access_level, expiration_date)
-            VALUES (%s, %s, %s, %s)
-        """, (policy_id, file_id, access_level, expiration_date))
+            INSERT INTO "FilePolicy" (policy_id, receiver_id, file_id, ip_address, access_count, active_permissions,
+                device_verification, location, account_info, watermark, data_range, time, biometrics)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            policy_id, receiver_id, file_id,
+            ip_address, access_count, active_permissions,
+            device_verification, location, account_info,
+            watermark, data_range, time, biometrics
+        ))
         self.schema.con.commit()
 
 # SECTION TO TEST DATABASE INSERTIONS
