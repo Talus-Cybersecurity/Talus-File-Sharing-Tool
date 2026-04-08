@@ -18,6 +18,7 @@ import ssl
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.fernet import Fernet
+import psycopg2
 
 from backend.schema import Schema
 from backend.database import Database
@@ -130,6 +131,7 @@ db = Database()
 async def handle_create_account(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None: 
     user_id = str(uuid.uuid4())
     username = data["username"]
+    email = data["email"]
     password = data["password"]
     tag_id = data["tag_id"]
 
@@ -143,26 +145,51 @@ async def handle_create_account(ws: WebSocketServerProtocol, data: Dict[str, Any
         })
         return
     # Insert user's username, password, user_id, and tag_id
-    db.insert_user(user_id, username, new_hash_pw, tag_id)
-    
+    try:
+        db.insert_user(user_id, username, email, new_hash_pw, tag_id)
+    except psycopg2.IntegrityError:
+        await send_json(ws, {
+            "type": "error",
+            "message": "Username or email is already taken."
+        })
+        return
+
     await send_json(ws, {
         "type": "create_account_ack",
         "user_id": user_id
     })
 
-# async def check_login_credentials(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None: 
-#     username = data["username"]
-#     password = data["password"]
-#     result = db.check_if_user_exists(username)
-#     if result is False:
-#         pass
-#     else: 
-#     if result is not None:
-#         await send_json(ws, {
-#             "type": "check_login_ack"
+async def handle_login(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None: 
+    username = data["username"]
+    password = data["password"]
+    user_matches = False
+    pw_matches = False
 
+    checked_pw_hash = hash_password(password)
 
-#         })
+    if checked_pw_hash is None:
+        await send_json(ws, {
+            "type": "error",
+            "message" : "Checking password hashes failed"
+        })
+        return
+    
+    try: 
+        if username == db.get_username(username):
+            user_matches = True
+        # Insert SELECT user & password function
+        # db.insert_user(user_id, username, email, new_hash_pw, tag_id)
+        if checked_pw_hash == db.get_username(checked_pw_hash): 
+            pw_matches = True
+        if user_matches and pw_matches is True:
+            pass
+    except psycopg2.IntegrityError:
+        await send_json(ws, {
+            "type": "error",
+            "message": "Server failed to check "
+        })
+        return
+        
 
 def generate_symmetric_key() -> bytes:
     return Fernet.generate_key()

@@ -20,6 +20,7 @@ class Schema:
             CREATE TABLE IF NOT EXISTS "User"(
                 user_id TEXT PRIMARY KEY,
                 username TEXT NOT NULL UNIQUE,
+                email TEXT NOT NULL UNIQUE,
                 password TEXT NOT NULL,
                 tag_id TEXT
             )
@@ -88,6 +89,7 @@ class Schema:
         self.create_accesslog_table()
         self.create_file_table()
         self.create_filepolicy_table()
+        # self.delete_all_tables()
         self.con.commit()
         self.con.close()
 

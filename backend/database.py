@@ -1,4 +1,4 @@
-from backend.schema import Schema
+from schema import Schema
 
 # Handles SQL logic
 class Database:
@@ -18,7 +18,21 @@ class Database:
             WHERE username = %s
         """, (username,))
         return self.schema.cur.fetchone()
+    
+    def get_username(self, username):
+        self.schema.cur.execute("""
+            SELECT username FROM public."User" 
+            WHERE username = %s """, (username, ))
+        return self.schema.cur.fetchone()
+        
 
+    def get_password(self, username, password):
+        self.schema.cur.execute("""
+            SELECT password FROM public."User" 
+            WHERE username = %s
+            AND password = %s""", (username, password, ))
+        return self.schema.cur.fetchone()   # returns password
+    
 
     def check_if_user_exists(self, username):
         self.schema.cur.execute("""
@@ -28,12 +42,16 @@ class Database:
         
     
     # Insert user account information into the database when a new user registers
-    def insert_user(self, user_id, username, password, tag_id):
-        self.schema.cur.execute("""
-            INSERT INTO "User" (user_id, username, password, tag_id) 
-            VALUES (%s, %s, %s, %s)
-        """, (user_id, username, password, tag_id))
-        self.schema.con.commit()
+    def insert_user(self, user_id, username, email, password, tag_id):
+        try:
+            self.schema.cur.execute("""
+                INSERT INTO "User" (user_id, username, email, password, tag_id)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (user_id, username, email, password, tag_id))
+            self.schema.con.commit()
+        except Exception:
+            self.schema.con.rollback()
+            raise
     
     # Insert file information into the database when a user uploads a file
     def insert_file(self, file_id, log_id, owner_id, file_type, upload_timestamp, file_size, file_name, file_path):
@@ -52,7 +70,7 @@ class Database:
         self.schema.con.commit()
 
     # Insert file policy information into the database when a user shares a file with another user
-        def insert_file_policy(self, policy_id, receiver_id, file_id,
+    def insert_file_policy(self, policy_id, receiver_id, file_id,
             ip_address, access_count, active_permissions,
             device_verification, location, account_info,
             watermark, data_range, time, biometrics):
