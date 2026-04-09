@@ -163,26 +163,47 @@ async def handle_login(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> Non
     username = data["username"]
     password = data["password"]
     user_matches = False
-    pw_matches = False
 
-    checked_pw_hash = hash_password(password)
+    # Check username if it matches one in the database
+    if db.get_username(username) and username == db.get_username(username)[0]:
+            user_matches = True
+    else:
+        await send_json(ws, {
+            "type":"error",
+            "message":"User does not exist"
+        })
+        logging.info("Client entered a username that does not exist")
+        return
 
-    if checked_pw_hash is None:
+    user_id = db.get_user_id(username)  
+    # Get database password using the username
+    get_db_hash = db.get_password(username)
+
+    # If the grabbed database password matches the password typed in through login, set to True
+    pw_matches = verify_password(password, get_db_hash)
+    
+    if pw_matches is False or get_db_hash is None:
         await send_json(ws, {
             "type": "error",
-            "message" : "Checking password hashes failed"
+            "message" : "Incorrect password. Please retry."
         })
+        logging.info("Incorrect password")
         return
     
     try: 
-        if username == db.get_username(username):
-            user_matches = True
-        # Insert SELECT user & password function
-        # db.insert_user(user_id, username, email, new_hash_pw, tag_id)
-        if checked_pw_hash == db.get_username(checked_pw_hash): 
-            pw_matches = True
         if user_matches and pw_matches is True:
-            pass
+            await send_json(ws, {
+                "type": "login_ack",
+                "username": username,
+                "user_id": user_id
+            })
+            print("Login did an amazing job")
+        else:
+            await send_json(ws, {
+                "type": "error",
+                "message": "Wrong password! Or smth when wrong idk"
+            })
+
     except psycopg2.IntegrityError:
         await send_json(ws, {
             "type": "error",
@@ -569,6 +590,10 @@ async def handle_message(ws: WebSocketServerProtocol, raw_message: str) -> None:
             await handle_request_file_access(ws, data)
         elif msg_type == "create_account":
             await handle_create_account(ws, data)
+        elif msg_type == "login":
+            await handle_login(ws, data)
+        elif msg_type == "session_clear":
+            pass
         else:
             await send_json(ws, {
                 "type": "error",
@@ -580,7 +605,10 @@ async def handle_message(ws: WebSocketServerProtocol, raw_message: str) -> None:
         await send_json(ws, {"type": "error", "message": str(ve)})
     except Exception as exc:
         logging.exception("Message handling failed")
-        await send_json(ws, {"type": "error", "message": str(exc)})
+        try:
+            await send_json(ws, {"type": "error", "message": str(exc)})
+        except Exception:
+            pass
 
 def build_ssl_context() -> ssl.SSLContext:
     ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)

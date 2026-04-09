@@ -7,3 +7,4 @@ cert.pem
 key.pem
 server_private.pem
 server_public.pem
+test.py

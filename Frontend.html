@@ -735,7 +735,7 @@ function wsDisconnect() {
   clearTimeout(_wsReconnectTimer);
   if (_ws) {
     // Tell server to clear session before closing
-    wsSend({ type: 'session_clear', client_id: currentUser ? currentUser.username : null });
+    wsSend({ type: "session_clear", client_id: currentUser ? currentUser.username : null });
     _ws.close();
     _ws = null;
   }
@@ -783,6 +783,7 @@ async function doLogin() {
       _afterLogin(username, reply.user_id);
       return;
     }
+    
 
     // ── Server returned explicit failure ──────────────────────────────
     errEl.textContent = reply.message || 'Invalid username or password.';

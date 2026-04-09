@@ -1,4 +1,4 @@
-from schema import Schema
+from .schema import Schema
 
 # Handles SQL logic
 class Database:
@@ -9,29 +9,27 @@ class Database:
     # When a user tries to log in, retrieve their account information from the database to 
     # verify their credentials
     
-    def get_user_by_username(self, username: str):
-        # Returns (user_id, username, password_hash, tag_id) or None
-        # Used by handle_login() to verify credentials
-        self.schema.cur.execute("""
-            SELECT user_id, username, password, tag_id
-            FROM "User"
-            WHERE username = %s
-        """, (username,))
-        return self.schema.cur.fetchone()
-    
-    def get_username(self, username):
+    def get_username(self, username: str):
         self.schema.cur.execute("""
             SELECT username FROM public."User" 
             WHERE username = %s """, (username, ))
         return self.schema.cur.fetchone()
         
-
-    def get_password(self, username, password):
+    def get_password(self, username: str):
         self.schema.cur.execute("""
             SELECT password FROM public."User" 
-            WHERE username = %s
-            AND password = %s""", (username, password, ))
-        return self.schema.cur.fetchone()   # returns password
+            WHERE username = %s""", (username, ))
+        
+        row = self.schema.cur.fetchone()   
+        return row[0] if row else None # returns user's password
+    
+
+    def get_user_id(self, username: str):
+        self.schema.cur.execute("""
+            SELECT user_id FROM public."User"
+            WHERE username = %s""", (username,))
+        row = self.schema.cur.fetchone()
+        return row[0] if row else None # returns user's user_id
     
 
     def check_if_user_exists(self, username):
@@ -40,7 +38,6 @@ class Database:
             WHERE username = %s""", (username, ))
         return self.schema.cur.fetchone() is not None
         
-    
     # Insert user account information into the database when a new user registers
     def insert_user(self, user_id, username, email, password, tag_id):
         try:
