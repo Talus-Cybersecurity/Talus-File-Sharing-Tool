@@ -33,16 +33,26 @@ These dependencies can be installed using:
 ```bash
 pip install pycryptodome argon2-cffi websockets psycopg2-binary python-dotenv
 ```
-PostgreSQL must be installed and running locally before connecting. 
-For macOS and Linux:
-1. `brew install postgresql` 
-2. `brew services start postgresql`
-
-For Windows, download the PostgreSQL 
-installer through `https://www.postgresql.org/download/.` 
-
-For visualizing the PostgreSQL database, download pgAdmin at https://www.pgadmin.org/download/
-
+## Database Requirements ##
+1. Install PostgreSQL based on your operating system:
+- **macOS:** `brew install postgresql@18`
+- **Linux:** `sudo apt install postgresql`
+- **Windows:** Download the installer from https://www.postgresql.org/download/                       
+                                                                                                           
+2. Start PostgreSQL:                                                                                                           
+- **macOS:** `brew services start postgresql@18`                                                    
+- **Linux:** `sudo systemctl start postgresql`
+- **Windows:** `net start postgresql-x64-18`
+                                                                                                           
+3. Create the database by running:
+`createdb talus_db  `                                                                                   
+                                                                                                         
+4. Run the server:
+`python server.py`
+                  
+*(Optional)* To visualize the database, download pgAdmin at https://www.pgadmin.org/download/ and log
+in using your `.env` credentials.
+                                                                                                              
 # Project Description
 
 Talus is a **secure file sharing platform** that bridges the gap between enterprise-grade security and consumer accessibility.
