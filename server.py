@@ -203,6 +203,14 @@ async def handle_login(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> Non
             "message":"User does not exist"
         })
         logging.info("Client entered a username that does not exist")
+        entry = build_log_entry(
+            event_type="login_failure",
+            result="failure",
+            message="User does not exist",
+            client_id=username,
+            role="user"
+        )
+        print(entry)
         return
 
     user_id = db.get_user_id(username)  
@@ -218,10 +226,27 @@ async def handle_login(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> Non
             "message" : "Incorrect password. Please retry."
         })
         logging.info("Incorrect password")
+        entry = build_log_entry(
+            event_type="login_failure",
+            result="failure",
+            message="Incorrect password",
+            client_id=username,
+            role="user",
+            failure_reason="invalid_password"
+        )
+        print(entry)
         return
     
     try: 
         if user_matches and pw_matches is True:
+            entry = build_log_entry(
+                event_type="login_success",
+                result="success",
+                message="User logged in",
+                client_id=user_id,
+                role="user"
+            )
+            print(entry)
             await send_json(ws, {
                 "type": "login_ack",
                 "username": username,
