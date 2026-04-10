@@ -8,4 +8,4 @@ key.pem
 server_private.pem
 server_public.pem
 test.py
-/logs/serverLogs.txt
+/logs/serverLogs.json
