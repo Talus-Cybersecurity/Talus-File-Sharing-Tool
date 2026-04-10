@@ -19,7 +19,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.fernet import Fernet
 import psycopg2
-from loghelper import build_log_entry
+from loghelper import build_log_entry, log_sender_event
 
 from backend.schema import Schema
 from backend.database import Database
@@ -400,6 +400,14 @@ def is_sender_file_post(data: dict) -> tuple[bool, str | None]:
 async def handle_upload_package(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
     valid, reason = is_sender_file_post(data)
     if not valid:
+        entry = log_sender_event(
+            event_type="file_upload",
+            result="failure",
+            message="Invalid sender file upload",
+            client_id=data.get("sender_id"),
+            failure_reason=reason
+        )
+        print(entry)
         logging.warning("Rejected sender file post: %s", reason)
         await send_json(ws, {"type": "error", "message": reason})
         return
@@ -420,6 +428,14 @@ async def handle_upload_package(ws: WebSocketServerProtocol, data: Dict[str, Any
             ).decode("utf-8")
         )
     except Exception:
+        entry = log_sender_event(
+            event_type="file_upload",
+            result="failure",
+            message="Failed to decrypt requirements",
+            client_id=sender_id,
+            file_id="unknown"
+        )
+        print(entry)
         logging.exception("Failed to decrypt requirements")
         await send_json(ws, {"type": "error", "message": "Could not decrypt requirements."})
         return
@@ -468,6 +484,14 @@ async def handle_upload_package(ws: WebSocketServerProtocol, data: Dict[str, Any
         logging.exception("insert_file_policy failed for package_id=%s", package_id)
  
     logging.info("Stored package_id=%s sender=%s receiver=%s", package_id, sender_id, receiver_id)
+    entry = log_sender_event(
+        event_type="file_upload",
+        result="success",
+        message="Sender uploaded package",
+        client_id=sender_id,
+        file_id=package_id
+    )
+    print(entry)
     await send_json(ws, {"type": "upload_package_ack", "package_id": package_id})
 
 def validate_receiver_against_requirements(

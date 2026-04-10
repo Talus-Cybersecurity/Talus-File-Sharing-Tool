@@ -18,3 +18,12 @@ def build_log_entry(event_type, result, message, **kwargs):
         "failure_reason": kwargs.get("failure_reason"),
         "access_count_after": kwargs.get("access_count_after")
     }
+
+def log_sender_event(event_type, result, message, **kwargs):
+    return build_log_entry(
+        event_type=event_type,
+        result=result,
+        message=message,
+        role="sender",
+        **kwargs
+    )
