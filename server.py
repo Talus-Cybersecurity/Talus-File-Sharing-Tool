@@ -19,6 +19,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.fernet import Fernet
 import psycopg2
+from loghelper import build_log_entry
 
 from backend.schema import Schema
 from backend.database import Database
@@ -139,6 +140,15 @@ async def handle_create_account(ws: WebSocketServerProtocol, data: Dict[str, Any
     # storing the password as "None"
     new_hash_pw = hash_password(password)
     if new_hash_pw is None:
+        entry = build_log_entry(
+            event_type="register_failure",
+            result="failure",
+            message="Password hashing failed",
+            client_id=user_id,
+            role="unknown"
+        )
+        print(entry)
+
         await send_json(ws, {
             "type": "error", 
             "message": "Password hashing failed"
@@ -148,16 +158,36 @@ async def handle_create_account(ws: WebSocketServerProtocol, data: Dict[str, Any
     try:
         db.insert_user(user_id, username, email, new_hash_pw, tag_id)
     except psycopg2.IntegrityError:
+        entry = build_log_entry(
+            event_type="register_failure",
+            result="failure",
+            message="Username or email already taken",
+            client_id=user_id,
+            role="unknown",
+            failure_reason="duplicate_user"
+        )
+        print(entry)
+
         await send_json(ws, {
             "type": "error",
             "message": "Username or email is already taken."
         })
         return
+    
+    entry = build_log_entry(
+        event_type="register_success",
+        result="success",
+        message="User account created",
+        client_id=user_id,
+        role="user"
+    )
+    print(entry)
 
     await send_json(ws, {
         "type": "create_account_ack",
         "user_id": user_id
     })
+
 
 async def handle_login(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None: 
     username = data["username"]
