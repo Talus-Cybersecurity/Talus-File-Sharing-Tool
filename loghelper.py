@@ -93,3 +93,5 @@ def backup_logs():
     logs = read_logs()
     logs.append(backup_entry)
     write_logs(logs)
+
+#fixing commit error
