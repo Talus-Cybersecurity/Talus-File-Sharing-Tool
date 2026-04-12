@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timezone
 import os
 import json
+import shutil
 
 def build_log_entry(event_type, result, message, **kwargs):
     return {
@@ -59,7 +60,7 @@ def write_log(entry):
     write_logs(logs)
 
     check_log_size()
-    
+
 
 def check_log_size(max_size_bytes=1_000_000):  # ~1MB
     if os.path.exists(LOG_PATH):
@@ -73,3 +74,22 @@ def check_log_size(max_size_bytes=1_000_000):  # ~1MB
             logs = read_logs()
             logs.append(warning_entry)
             write_logs(logs)
+
+
+def backup_logs():
+    os.makedirs(BACKUP_DIR, exist_ok=True)
+
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    backup_path = os.path.join(BACKUP_DIR, f"serverLogs_{timestamp}.json")
+
+    shutil.copy(LOG_PATH, backup_path)
+
+    backup_entry = build_log_entry(
+        event_type="log_backup_created",
+        result="success",
+        message=f"Backup created: {backup_path}"
+    )
+
+    logs = read_logs()
+    logs.append(backup_entry)
+    write_logs(logs)
