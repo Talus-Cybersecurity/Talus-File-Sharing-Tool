@@ -95,3 +95,25 @@ def backup_logs():
     write_logs(logs)
 
 #fixing commit error
+
+from logformatting import get_readable_logs
+
+async def handle_get_logs(ws, data):
+    client_id = data.get("client_id")
+
+    # VERY SIMPLE admin check (adjust if you have roles stored elsewhere)
+    session = connected_clients.get(client_id)
+
+    if not session or session.role != "admin":
+        await send_json(ws, {
+            "type": "error",
+            "message": "Unauthorized: Admin access required"
+        })
+        return
+
+    logs = get_readable_logs()
+
+    await send_json(ws, {
+        "type": "logs_response",
+        "logs": logs
+    })

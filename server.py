@@ -19,8 +19,8 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.fernet import Fernet
 import psycopg2
-from loghelper import build_log_entry, log_sender_event, write_log
-
+from loghelper import build_log_entry, log_sender_event, write_log, handle_get_logs
+from logformatting import get_readable_logs
 from backend.schema import Schema
 from backend.database import Database
 from Cryptography import hash_password, verify_password
@@ -62,6 +62,26 @@ public_keys: Dict[str, str] = {}
 sender_session_keys: Dict[str, bytes] = {}
 receiver_session_keys: Dict[str, bytes] = {}
 packages: Dict[str, FilePackage] = {}
+
+async def handle_get_logs(ws, data):
+    client_id = data.get("client_id")
+
+    # VERY SIMPLE admin check (adjust if you have roles stored elsewhere)
+    session = connected_clients.get(client_id)
+
+    if not session or session.role != "admin":
+        await send_json(ws, {
+            "type": "error",
+            "message": "Unauthorized: Admin access required"
+        })
+        return
+
+    logs = get_readable_logs()
+
+    await send_json(ws, {
+        "type": "logs_response",
+        "logs": logs
+    })
 
 def generate_rsa_keypair_if_missing() -> None:
     private_path = Path(SERVER_PRIVATE_KEY_FILE)
@@ -673,6 +693,8 @@ async def handle_message(ws: WebSocketServerProtocol, raw_message: str) -> None:
             await handle_login(ws, data)
         elif msg_type == "session_clear":
             pass
+        elif msg_type == "get_logs":
+            await handle_get_logs(ws, data)
         else:
             await send_json(ws, {
                 "type": "error",
