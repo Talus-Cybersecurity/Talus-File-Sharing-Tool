@@ -25,6 +25,8 @@ from backend.schema import Schema
 from backend.database import Database
 from Cryptography import hash_password, verify_password
 
+import re
+
 HOST = "0.0.0.0"
 PORT = 8765
 CERT_FILE = "cert.pem"
@@ -136,6 +138,30 @@ async def handle_create_account(ws: WebSocketServerProtocol, data: Dict[str, Any
     password = data["password"]
     tag_id = data["tag_id"]
 
+    # Check username
+    if not username or len(username) < 3 or len(username) > 36:
+        await send_json(ws, {"type": "error",
+            "message": "Username must be between 3 and 36 characters."})
+        return
+
+    # Check passwords
+    if len(password) < 8:
+        await send_json(ws, {"type": "error",
+            "message": "Password must be at least 8 characters."})
+        return
+    if not re.search(r"[A-Za-z]", password):
+        await send_json(ws, {"type": "error",
+            "message": "Password must contain at least one letter."})
+        return
+    if not re.search(r"[0-9]", password):
+        await send_json(ws, {"type": "error",
+            "message": "Password must contain at least one number."})
+        return
+    if not re.search(r"[^A-Za-z0-9]", password):
+        await send_json(ws, {"type": "error",
+            "message": "Password must contain at least one symbol."})
+        return
+        
     # If password fails to hash, this function prevents the database from 
     # storing the password as "None"
     new_hash_pw = hash_password(password)
