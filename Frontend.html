@@ -853,7 +853,7 @@ async function doRegister() {
   errEl.textContent = '';
 
   if (!username)                          { errEl.textContent = 'Please enter a username.'; return; }
-  if (username.length < 3 || username.length > 36) { errEl.textContent = 'Please enter a valid username.'; return; }
+  if (username.length < 3 || username.length > 36) { errEl.textContent = 'Username must be between 3 and 36 characters.'; return; }
   if (!/^\d{1,4}$/.test(tag))             { errEl.textContent = 'Tag ID must be 1–4 digits.'; return; }
   if (!email || !email.includes('@'))     { errEl.textContent = 'Please enter a valid email.'; return; }
   if (!password)                          { errEl.textContent = 'Please enter a password.'; return; }
