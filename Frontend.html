@@ -853,10 +853,14 @@ async function doRegister() {
   errEl.textContent = '';
 
   if (!username)                          { errEl.textContent = 'Please enter a username.'; return; }
+  if (username.length < 3 || username.length > 36) { errEl.textContent = 'Please enter a valid username.'; return; }
   if (!/^\d{1,4}$/.test(tag))             { errEl.textContent = 'Tag ID must be 1–4 digits.'; return; }
   if (!email || !email.includes('@'))     { errEl.textContent = 'Please enter a valid email.'; return; }
   if (!password)                          { errEl.textContent = 'Please enter a password.'; return; }
-  if (password.length < 6)               { errEl.textContent = 'Password must be at least 6 characters.'; return; }
+  if (password.length < 8)               { errEl.textContent = 'Password must be at least 8 characters.'; return; }
+  if (!/[A-Za-z]/.test(password))        { errEl.textContent = 'Password must contain at least one letter.'; return; }
+  if (!/[0-9]/.test(password))           { errEl.textContent = 'Password must contain at least one number.'; return; }
+  if (!/[^A-Za-z0-9]/.test(password))    { errEl.textContent = 'Password must contain at least one symbol.'; return; }
   if (password !== confirm)              { errEl.textContent = 'Passwords do not match.'; return; }
 
   const btn = document.querySelector('#register-form-body .login-btn');
