@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TALUS — Sign In</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+
+<div class="login-screen" id="login-screen">
+  <div class="login-bg-pattern"></div>
+  <div class="login-box">
+    <div class="login-logo">TALUS</div>
+    <div class="login-tagline">Secure File Transfer</div>
+    <div class="login-field">
+      <label>Username</label>
+      <input type="text" id="login-username" placeholder="Enter your username" autocomplete="username"
+             onkeydown="if(event.key==='Enter') document.getElementById('login-password').focus()"/>
+    </div>
+    <div class="login-field">
+      <label>Password</label>
+      <input type="password" id="login-password" placeholder="Enter your password" autocomplete="current-password"
+             onkeydown="if(event.key==='Enter') doLogin()"/>
+    </div>
+    <div class="login-error" id="login-error"></div>
+    <div class="login-btn-row">
+      <button class="login-btn-secondary" onclick="window.location.href='register.html'">Register</button>
+      <button class="login-btn" id="login-btn" onclick="doLogin()">Sign In</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Set to false when the real server is running ──────────────────────
+const MOCK_MODE = true;
+const WS_URL    = 'wss://localhost:8765';
+
+let toastTimer;
+function toastMsg(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+// Store user in sessionStorage so sender/receiver pages can read it
+function _afterLogin(username, userId) {
+  sessionStorage.setItem('talus_user', JSON.stringify({
+    username,
+    userId,
+    initials: username.slice(0, 2).toUpperCase()
+  }));
+  window.location.href = 'sender.html';
+}
+
+async function doLogin() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl    = document.getElementById('login-error');
+  if (!username || !password) { errEl.textContent = 'Please enter both fields.'; return; }
+  errEl.textContent = '';
+
+  const btn = document.getElementById('login-btn');
+  btn.textContent = 'Signing in…'; btn.disabled = true;
+
+  // ── Mock mode: skip the server, go straight to sender ────────────────
+  if (MOCK_MODE) {
+    setTimeout(() => {
+      btn.textContent = 'Sign In'; btn.disabled = false;
+      _afterLogin(username, 'mock-user-id');
+    }, 400);
+    return;
+  }
+
+  // ── Real mode ─────────────────────────────────────────────────────────
+  try {
+    const tempWs = new WebSocket(WS_URL);
+    await new Promise((res, rej) => {
+      tempWs.onopen  = res;
+      tempWs.onerror = () => rej(new Error('NO_SERVER'));
+    });
+    const reply = await new Promise((res, rej) => {
+      const t = setTimeout(() => rej(new Error('TIMEOUT')), 8000);
+      tempWs.onmessage = e => { clearTimeout(t); res(JSON.parse(e.data)); };
+      tempWs.onerror   = () => { clearTimeout(t); rej(new Error('CONNECTION_ERROR')); };
+      tempWs.send(JSON.stringify({ type: 'login', username, password }));
+    });
+    tempWs.close();
+
+    if (reply.type === 'login_ack') { _afterLogin(username, reply.user_id); return; }
+    errEl.textContent = reply.message || 'Invalid username or password.';
+
+  } catch (err) {
+    if (err.message === 'TIMEOUT')        errEl.textContent = 'Server timed out — please try again.';
+    else if (err.message === 'NO_SERVER') errEl.textContent = 'Cannot reach server. Is it running?';
+    else                                  errEl.textContent = 'Connection error — please try again.';
+  } finally {
+    btn.textContent = 'Sign In'; btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>

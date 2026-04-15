@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TALUS — Register</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+
+<!-- Register screen -->
+<div class="register-screen" id="register-screen">
+  <div class="register-bg-pattern"></div>
+  <div class="register-box">
+    <button class="register-back" onclick="window.location.href='login.html'">
+      <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>Back to Sign In
+    </button>
+    <div class="login-logo">TALUS</div>
+    <div class="login-tagline" style="margin-bottom:28px;">Create Account</div>
+    <div id="register-form-body">
+      <div class="login-field">
+        <label>Username</label>
+        <input type="text" id="reg-username" placeholder="Choose a username" autocomplete="username"
+               onkeydown="if(event.key==='Enter') document.getElementById('reg-tag').focus()"/>
+      </div>
+      <div class="login-field">
+        <label>Tag ID <span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--text-muted);text-transform:none;letter-spacing:0;">(1–4 digits)</span></label>
+        <div class="register-tag-row">
+          <span class="register-tag-hint">#</span>
+          <input type="text" id="reg-tag" placeholder="e.g. 4821" maxlength="4" autocomplete="off"
+                 style="flex:1;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:'Space Mono',monospace;font-size:14px;color:var(--text-main);background:var(--teal-pale);outline:none;transition:border-color 0.18s;"
+                 onfocus="this.style.borderColor='var(--teal-accent)'" onblur="this.style.borderColor='var(--border)'"
+                 onkeydown="if(event.key==='Enter') document.getElementById('reg-email').focus()"/>
+        </div>
+      </div>
+      <div class="login-field">
+        <label>Email</label>
+        <input type="email" id="reg-email" placeholder="your@email.com" autocomplete="email"
+               onkeydown="if(event.key==='Enter') document.getElementById('reg-password').focus()"/>
+      </div>
+      <div class="login-field">
+        <label>Password</label>
+        <input type="password" id="reg-password" placeholder="Create a password" autocomplete="new-password"
+               onkeydown="if(event.key==='Enter') document.getElementById('reg-confirm').focus()"/>
+      </div>
+      <div class="login-field">
+        <label>Confirm Password</label>
+        <input type="password" id="reg-confirm" placeholder="Re-enter your password" autocomplete="new-password"
+               onkeydown="if(event.key==='Enter') doRegister()"/>
+      </div>
+      <div class="login-error" id="register-error"></div>
+      <button class="login-btn" id="register-btn" onclick="doRegister()" style="margin-top:4px;">Create Account</button>
+    </div>
+    <div id="register-success-body" style="display:none;">
+      <div class="register-success">
+        <div class="register-success-icon">&#x2705;</div>
+        <div class="register-success-title">Account Created!</div>
+        <div class="register-success-sub" id="register-success-msg"></div>
+      </div>
+      <button class="login-btn" onclick="window.location.href='login.html'" style="margin-top:24px;">Go to Sign In</button>
+    </div>
+  </div>
+</div>
+
+<!-- Email verification screen -->
+<div class="verify-screen hidden" id="verify-screen">
+  <div class="register-bg-pattern"></div>
+  <div class="verify-box">
+    <div class="verify-icon">📧</div>
+    <div class="verify-title">Check your email</div>
+    <div class="verify-sub">We sent a 6-digit code to<br><strong id="verify-email-display"></strong></div>
+    <div class="verify-code-row">
+      <input type="text" class="vcode" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
+      <input type="text" class="vcode" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
+      <input type="text" class="vcode" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
+      <input type="text" class="vcode" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
+      <input type="text" class="vcode" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
+      <input type="text" class="vcode" maxlength="1" inputmode="numeric" pattern="[0-9]"/>
+    </div>
+    <div class="login-error" id="verify-error"></div>
+    <button class="login-btn" id="verify-submit-btn" onclick="doVerifyEmail()" style="margin-top:16px;" disabled>Verify Email</button>
+    <div class="verify-resend">
+      Didn't get it? <button id="verify-resend-btn" onclick="doResendCode()">Resend code</button>
+      <span class="verify-countdown" id="verify-countdown"></span>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Set to false when the real server is running ──────────────────────
+const MOCK_MODE = true;
+const WS_URL    = 'wss://localhost:8765';
+
+let toastTimer;
+function toastMsg(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+async function doRegister() {
+  const username = document.getElementById('reg-username').value.trim();
+  const tag      = document.getElementById('reg-tag').value.trim();
+  const email    = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-password').value;
+  const confirm  = document.getElementById('reg-confirm').value;
+  const errEl    = document.getElementById('register-error');
+  errEl.textContent = '';
+
+  if (!username)                               { errEl.textContent = 'Please enter a username.'; return; }
+  if (username.length < 3 || username.length > 36) { errEl.textContent = 'Username must be between 3 and 36 characters.'; return; }
+  if (!/^\d{1,4}$/.test(tag))                 { errEl.textContent = 'Tag ID must be 1–4 digits.'; return; }
+  if (!email || !email.includes('@'))          { errEl.textContent = 'Please enter a valid email.'; return; }
+  if (!password)                               { errEl.textContent = 'Please enter a password.'; return; }
+  if (password.length < 8)                    { errEl.textContent = 'Password must be at least 8 characters.'; return; }
+  if (!/[A-Za-z]/.test(password))             { errEl.textContent = 'Password must contain at least one letter.'; return; }
+  if (!/[0-9]/.test(password))                { errEl.textContent = 'Password must contain at least one number.'; return; }
+  if (!/[^A-Za-z0-9]/.test(password))         { errEl.textContent = 'Password must contain at least one symbol.'; return; }
+  if (password !== confirm)                   { errEl.textContent = 'Passwords do not match.'; return; }
+
+  const btn = document.getElementById('register-btn');
+  btn.textContent = 'Creating…'; btn.disabled = true;
+
+  // ── Mock mode: show success immediately ───────────────────────────────
+  if (MOCK_MODE) {
+    setTimeout(() => {
+      btn.textContent = 'Create Account'; btn.disabled = false;
+      document.getElementById('register-form-body').style.display = 'none';
+      document.getElementById('register-success-body').style.display = '';
+      document.getElementById('register-success-msg').textContent =
+        `Welcome, ${username}! Your account has been created. You can now sign in.`;
+    }, 500);
+    return;
+  }
+
+  // ── Real mode ─────────────────────────────────────────────────────────
+  try {
+    const tempWs = new WebSocket(WS_URL);
+    await new Promise((res, rej) => {
+      tempWs.onopen  = res;
+      tempWs.onerror = () => rej(new Error('NO_SERVER'));
+    });
+    const reply = await new Promise((res, rej) => {
+      const t = setTimeout(() => rej(new Error('TIMEOUT')), 8000);
+      tempWs.onmessage = e => { clearTimeout(t); res(JSON.parse(e.data)); };
+      tempWs.onerror   = () => { clearTimeout(t); rej(new Error('CONNECTION_ERROR')); };
+      tempWs.send(JSON.stringify({ type: 'create_account', username, password, tag_id: tag, email }));
+    });
+    tempWs.close();
+
+    if (reply.type === 'create_account_ack') {
+      document.getElementById('register-screen').classList.add('hidden');
+      openVerifyScreen(username, email);
+      return;
+    }
+    errEl.textContent = reply.message || 'Registration failed — please try again.';
+
+  } catch (err) {
+    if (err.message === 'TIMEOUT')        errEl.textContent = 'Server timed out — please try again.';
+    else if (err.message === 'NO_SERVER') errEl.textContent = 'Cannot reach server. Is it running?';
+    else                                  errEl.textContent = 'Connection error — please try again.';
+  } finally {
+    btn.textContent = 'Create Account'; btn.disabled = false;
+  }
+}
+
+// ── Email verification ────────────────────────────────────────────────
+let _verifyUsername = null, _verifyEmail = null, _resendTimer = null, _resendSeconds = 0;
+
+function openVerifyScreen(username, email) {
+  _verifyUsername = username;
+  _verifyEmail    = email;
+  document.querySelectorAll('.vcode').forEach(i => { i.value = ''; i.classList.remove('filled'); });
+  document.getElementById('verify-error').textContent = '';
+  document.getElementById('verify-submit-btn').disabled = true;
+  document.getElementById('verify-email-display').textContent = email;
+  document.getElementById('verify-screen').classList.remove('hidden');
+  _initCodeInputs();
+  _startResendCountdown(60);
+  setTimeout(() => document.querySelectorAll('.vcode')[0].focus(), 100);
+}
+
+function _initCodeInputs() {
+  const inputs = Array.from(document.querySelectorAll('.vcode'));
+  inputs.forEach((input, i) => {
+    input.oninput = () => {
+      input.value = input.value.replace(/\D/g, '');
+      input.classList.toggle('filled', input.value.length === 1);
+      if (input.value.length === 1 && i < inputs.length - 1) inputs[i + 1].focus();
+      document.getElementById('verify-submit-btn').disabled = inputs.some(inp => inp.value.length !== 1);
+    };
+    input.onkeydown = (e) => {
+      if (e.key === 'Backspace' && !input.value && i > 0) {
+        inputs[i - 1].focus(); inputs[i - 1].value = ''; inputs[i - 1].classList.remove('filled');
+      }
+      if (e.key === 'Enter') doVerifyEmail();
+    };
+    input.onpaste = (e) => {
+      const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g,'').slice(0,6);
+      if (pasted.length === 6) {
+        e.preventDefault();
+        inputs.forEach((inp, idx) => { inp.value = pasted[idx] || ''; inp.classList.toggle('filled', !!inp.value); });
+        document.getElementById('verify-submit-btn').disabled = false;
+        inputs[5].focus();
+      }
+    };
+  });
+}
+
+function _getCode() {
+  return Array.from(document.querySelectorAll('.vcode')).map(i => i.value).join('');
+}
+
+function _startResendCountdown(seconds) {
+  const btn = document.getElementById('verify-resend-btn');
+  const countdown = document.getElementById('verify-countdown');
+  btn.disabled = true; _resendSeconds = seconds;
+  clearInterval(_resendTimer);
+  _resendTimer = setInterval(() => {
+    _resendSeconds--;
+    countdown.textContent = `(${_resendSeconds}s)`;
+    if (_resendSeconds <= 0) { clearInterval(_resendTimer); btn.disabled = false; countdown.textContent = ''; }
+  }, 1000);
+}
+
+async function doVerifyEmail() {
+  const code  = _getCode();
+  const errEl = document.getElementById('verify-error');
+  errEl.textContent = '';
+  if (code.length !== 6) { errEl.textContent = 'Please enter all 6 digits.'; return; }
+
+  const btn = document.getElementById('verify-submit-btn');
+  btn.textContent = 'Verifying…'; btn.disabled = true;
+
+  // ── Mock mode: auto-accept any code ───────────────────────────────────
+  if (MOCK_MODE) {
+    setTimeout(() => {
+      document.getElementById('verify-screen').classList.add('hidden');
+      document.getElementById('register-screen').classList.remove('hidden');
+      document.getElementById('register-form-body').style.display = 'none';
+      document.getElementById('register-success-body').style.display = '';
+      document.getElementById('register-success-msg').textContent =
+        `Email verified! Welcome, ${_verifyUsername}. You can now sign in.`;
+      btn.textContent = 'Verify Email'; btn.disabled = false;
+    }, 500);
+    return;
+  }
+
+  // ── Real mode ─────────────────────────────────────────────────────────
+  try {
+    const tempWs = new WebSocket(WS_URL);
+    await new Promise((res, rej) => { tempWs.onopen = res; tempWs.onerror = () => rej(new Error('NO_SERVER')); });
+    const reply = await new Promise((res, rej) => {
+      const t = setTimeout(() => rej(new Error('TIMEOUT')), 8000);
+      tempWs.onmessage = e => { clearTimeout(t); res(JSON.parse(e.data)); };
+      tempWs.onerror   = () => { clearTimeout(t); rej(new Error('CONNECTION_ERROR')); };
+      tempWs.send(JSON.stringify({ type: 'verify_email', username: _verifyUsername, code }));
+    });
+    tempWs.close();
+
+    if (reply.type === 'verify_email_ack') {
+      document.getElementById('verify-screen').classList.add('hidden');
+      document.getElementById('register-screen').classList.remove('hidden');
+      document.getElementById('register-form-body').style.display = 'none';
+      document.getElementById('register-success-body').style.display = '';
+      document.getElementById('register-success-msg').textContent =
+        `Email verified! Welcome, ${_verifyUsername}. You can now sign in.`;
+      return;
+    }
+    errEl.textContent = reply.message || 'Incorrect code — please try again.';
+    const row = document.querySelector('.verify-code-row');
+    row.style.animation = 'none'; row.offsetHeight; row.style.animation = 'shake 0.35s ease';
+  } catch (err) {
+    if (err.message === 'TIMEOUT')        errEl.textContent = 'Server timed out — please try again.';
+    else if (err.message === 'NO_SERVER') errEl.textContent = 'Cannot reach server. Is it running?';
+    else                                  errEl.textContent = 'Connection error — please try again.';
+  } finally {
+    btn.textContent = 'Verify Email'; btn.disabled = _getCode().length !== 6;
+  }
+}
+
+async function doResendCode() {
+  const errEl = document.getElementById('verify-error');
+  errEl.textContent = '';
+
+  if (MOCK_MODE) { toastMsg('✉ New code sent — check your email.'); _startResendCountdown(60); return; }
+
+  try {
+    const tempWs = new WebSocket(WS_URL);
+    await new Promise((res, rej) => { tempWs.onopen = res; tempWs.onerror = () => rej(new Error('NO_SERVER')); });
+    const reply = await new Promise((res, rej) => {
+      const t = setTimeout(() => rej(new Error('TIMEOUT')), 8000);
+      tempWs.onmessage = e => { clearTimeout(t); res(JSON.parse(e.data)); };
+      tempWs.onerror   = () => { clearTimeout(t); rej(new Error('CONNECTION_ERROR')); };
+      tempWs.send(JSON.stringify({ type: 'resend_verification', username: _verifyUsername }));
+    });
+    tempWs.close();
+    if (reply.type === 'resend_verification_ack') {
+      toastMsg('✉ New code sent — check your email.'); _startResendCountdown(60);
+    } else {
+      errEl.textContent = reply.message || 'Could not resend — please try again.';
+    }
+  } catch (err) {
+    if (err.message === 'NO_SERVER') errEl.textContent = 'Cannot reach server. Is it running?';
+    else errEl.textContent = 'Could not resend — please try again.';
+  }
+}
+</script>
+</body>
+</html>

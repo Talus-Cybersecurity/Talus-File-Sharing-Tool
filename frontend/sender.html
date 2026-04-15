@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TALUS — Send</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+
+<div class="shell">
+  <header>
+    <div><div class="logo">TALUS</div><div class="header-subtitle">Secure File Transfer</div></div>
+    <div class="header-divider"></div>
+    <div class="header-tabs">
+      <button class="tab-btn active">Send</button>
+      <button class="tab-btn" onclick="window.location.href='receiver.html'">Receive</button>
+    </div>
+    <div style="position:relative;margin-left:16px;">
+      <button class="profile-btn" id="profile-btn" onclick="toggleProfileMenu()"></button>
+      <div class="profile-dropdown" id="profile-dropdown">
+        <div class="profile-dropdown-header">
+          <div class="profile-dropdown-name" id="profile-display-name"></div>
+          <div class="profile-dropdown-user" id="profile-display-user"></div>
+        </div>
+        <div class="profile-dropdown-item danger" onclick="doLogout()">
+          <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sign Out
+        </div>
+      </div>
+    </div>
+  </header>
+  <main>
+    <div class="panel active" id="send-panel">
+      <div class="send-layout">
+        <div class="input-grid">
+          <label class="input-card" title="Attach one or more files">
+            <svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+            <span>File</span>
+            <input type="file" multiple onchange="attachFiles(event,'file')"/>
+          </label>
+          <label class="input-card" title="Attach an entire folder">
+            <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+            <span>Folder</span>
+            <input type="file" webkitdirectory multiple onchange="attachFolder(event)"/>
+          </label>
+          <div class="input-card" title="Compose text" onclick="openTextModal()">
+            <svg viewBox="0 0 24 24"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+            <span>Text</span>
+          </div>
+          <div class="input-card" title="Paste from clipboard" onclick="pasteClipboard()">
+            <svg viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="4" rx="1"/><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+            <span>Paste</span>
+          </div>
+        </div>
+        <div class="lower-area">
+          <div class="left-col">
+            <div class="attached-bar">
+              <span id="attach-count-label">0 item(s) attached</span>
+              <span class="count-badge" id="attach-count">0</span>
+            </div>
+            <div class="attached-scroll" id="attached-list"></div>
+            <div class="section-label">Recipients</div>
+            <div class="recipient-input-row">
+              <input type="text" id="recipient-input" class="recipient-input" placeholder="username#0000" maxlength="64"
+                     onkeydown="if(event.key==='Enter') addRecipient()"/>
+              <button class="recipient-add-btn" onclick="addRecipient()" title="Add recipient">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </button>
+            </div>
+            <div class="user-list" id="user-list"></div>
+          </div>
+          <div class="right-col">
+            <div class="settings-header">Send Options</div>
+            <div class="setting-row">
+              <span class="setting-label">IP</span>
+              <button class="gear-btn" onclick="openSetting('IP')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg></button>
+              <label class="toggle"><input type="checkbox" checked onchange="toastMsg('IP filter '+togStr(this))"><span class="toggle-track"></span></label>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">Device certification</span>
+              <button class="gear-btn" onclick="openSetting('Device certification')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg></button>
+              <label class="toggle"><input type="checkbox" checked onchange="toastMsg('Device cert '+togStr(this))"><span class="toggle-track"></span></label>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">Track file views</span>
+              <label class="toggle"><input type="checkbox" checked onchange="toastMsg('Track file views '+togStr(this))"><span class="toggle-track"></span></label>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">Time of day</span>
+              <span class="setting-value" id="tod-value" onclick="editTimeOfDay()">9:00 – 5:00</span>
+              <label class="toggle"><input type="checkbox" checked onchange="toastMsg('Time restriction '+togStr(this))"><span class="toggle-track"></span></label>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">Limited Access</span>
+              <span class="setting-value" id="la-value" onclick="editLimitedAccess()">5</span>
+              <label class="toggle"><input type="checkbox" checked onchange="toastMsg('Limited access '+togStr(this))"><span class="toggle-track"></span></label>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">Watermark</span>
+              <label class="toggle"><input type="checkbox" checked onchange="toastMsg('Watermark '+togStr(this))"><span class="toggle-track"></span></label>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">Password / Pin</span>
+              <button class="gear-btn" onclick="openSetting('Password/PIN')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg></button>
+              <label class="toggle"><input type="checkbox" checked onchange="toastMsg('Password/PIN '+togStr(this))"><span class="toggle-track"></span></label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Text modal -->
+<div class="modal-overlay" id="text-modal">
+  <div class="modal">
+    <div class="modal-title">✏️ Compose Text Message</div>
+    <textarea id="text-input" placeholder="Type your message here…"></textarea>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('text-modal')">Cancel</button>
+      <button class="btn-primary" onclick="attachText()">Attach Text</button>
+    </div>
+  </div>
+</div>
+
+<!-- Final verification modal -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal" style="width:520px">
+    <div class="modal-title">📤 Confirm Send</div>
+    <div class="confirm-recipient">
+      <div class="big-avatar" id="confirm-avatar"></div>
+      <div>
+        <div class="confirm-recipient-name" id="confirm-name"></div>
+        <div class="confirm-recipient-tag" id="confirm-tag"></div>
+      </div>
+    </div>
+    <div class="confirm-two-col">
+      <div>
+        <div class="confirm-items-label">Items to send</div>
+        <div class="confirm-items-list" id="confirm-items-list"></div>
+      </div>
+      <div>
+        <div class="confirm-items-label">Active send options</div>
+        <div class="confirm-options-list" id="confirm-options-list"></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('confirm-modal')">Cancel</button>
+      <button class="btn-confirm" onclick="confirmSend()">Confirm &amp; Send</button>
+    </div>
+  </div>
+</div>
+
+<!-- File preview modal -->
+<div class="modal-overlay" id="preview-modal">
+  <div class="modal" style="width:540px">
+    <div class="modal-title">🔍 File Preview</div>
+    <div class="preview-meta">
+      <span class="preview-meta-icon" id="preview-icon"></span>
+      <div>
+        <div class="preview-meta-name" id="preview-name"></div>
+        <div class="preview-meta-type" id="preview-type"></div>
+      </div>
+    </div>
+    <div class="preview-modal-body" id="preview-body"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('preview-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- IP Modal -->
+<div class="modal-overlay" id="ip-modal">
+  <div class="modal settings-modal">
+    <div class="modal-title">🌐 IP Restriction</div>
+    <div class="field-group">
+      <div>
+        <div class="field-label">Add IP address or range</div>
+        <div class="ip-add-row">
+          <input class="field-input" id="ip-input" placeholder="e.g. 192.168.1.1 or 10.0.0.0/24" onkeydown="if(event.key==='Enter') addIP()"/>
+          <button class="ip-add-btn" onclick="addIP()">+ Add</button>
+        </div>
+        <div class="field-hint">Supports single IPs and CIDR notation</div>
+      </div>
+      <div>
+        <div class="field-label">Allowed IPs</div>
+        <div class="ip-list" id="ip-list"><div style="color:var(--text-muted);font-size:13px;padding:8px 4px;">No IPs added yet.</div></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('ip-modal')">Cancel</button>
+      <button class="btn-save" onclick="saveIP()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Device Cert Modal -->
+<div class="modal-overlay" id="cert-modal">
+  <div class="modal settings-modal">
+    <div class="modal-title">🔒 Device Certification</div>
+    <div class="empty-cert-state">
+      <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/><circle cx="12" cy="16" r="1"/></svg>
+      <div>Supported certification methods will appear here.</div>
+      <div style="font-size:12px;margin-top:6px;color:var(--border);">Coming soon</div>
+    </div>
+    <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('cert-modal')">Close</button></div>
+  </div>
+</div>
+
+<!-- Password / PIN Modal -->
+<div class="modal-overlay" id="pin-modal">
+  <div class="modal settings-modal">
+    <div class="modal-title">🔑 Password / PIN</div>
+    <div class="pin-tabs">
+      <button class="pin-tab active" onclick="switchPinTab('password')">Password</button>
+      <button class="pin-tab" onclick="switchPinTab('pin')">PIN</button>
+    </div>
+    <div class="pin-panel active" id="pw-panel">
+      <div><div class="field-label">Password</div><input class="field-input" id="pw-input" type="password" placeholder="Enter a password…" autocomplete="new-password"/></div>
+      <div><div class="field-label">Confirm password</div><input class="field-input" id="pw-confirm" type="password" placeholder="Re-enter password…" autocomplete="new-password"/></div>
+      <div id="pw-saved" style="display:none"><span class="saved-badge">✓ Password saved</span></div>
+    </div>
+    <div class="pin-panel" id="pin-panel-inner">
+      <div class="field-label" style="text-align:center">Enter a 4–6 digit PIN</div>
+      <div class="pin-dots" id="pin-dots">
+        <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div>
+        <div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
+        <div class="pin-dot" id="pd4"></div><div class="pin-dot" id="pd5"></div>
+      </div>
+      <div class="pin-keypad">
+        <button class="pin-key" onclick="pinKey('1')">1</button><button class="pin-key" onclick="pinKey('2')">2</button><button class="pin-key" onclick="pinKey('3')">3</button>
+        <button class="pin-key" onclick="pinKey('4')">4</button><button class="pin-key" onclick="pinKey('5')">5</button><button class="pin-key" onclick="pinKey('6')">6</button>
+        <button class="pin-key" onclick="pinKey('7')">7</button><button class="pin-key" onclick="pinKey('8')">8</button><button class="pin-key" onclick="pinKey('9')">9</button>
+        <button class="pin-key" onclick="pinKey('clear')" style="font-size:11px;color:var(--text-muted)">CLR</button>
+        <button class="pin-key" onclick="pinKey('0')">0</button>
+        <button class="pin-key" onclick="pinKey('del')" style="color:var(--text-muted)">⌫</button>
+      </div>
+      <div id="pin-saved" style="display:none;text-align:center"><span class="saved-badge">✓ PIN saved</span></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('pin-modal')">Cancel</button>
+      <button class="btn-save" onclick="savePinOrPassword()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="dropzone-overlay" id="dropzone-overlay">⬇ Drop files to attach</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Set to false when the real server is running ──────────────────────
+const MOCK_MODE = true;
+const WS_URL    = 'wss://localhost:8765';
+
+// ── Load user from sessionStorage or use mock ─────────────────────────
+let currentUser;
+if (MOCK_MODE) {
+  currentUser = { username: 'TestUser', userId: 'mock-001', initials: 'TE' };
+} else {
+  const _stored = sessionStorage.getItem('talus_user');
+  if (!_stored) { window.location.href = 'login.html'; }
+  else { currentUser = JSON.parse(_stored); }
+}
+
+// Populate header profile
+document.getElementById('profile-btn').textContent          = currentUser.initials;
+document.getElementById('profile-display-name').textContent = currentUser.username;
+document.getElementById('profile-display-user').textContent = '@' + currentUser.username.toLowerCase().replace(/\s+/g,'');
+
+// ── WebSocket layer ───────────────────────────────────────────────────
+let _ws = null, _wsReady = false, _pendingResolvers = {}, _wsReconnectTimer = null;
+
+function wsConnect() {
+  if (MOCK_MODE) { _wsReady = true; return; }
+  if (_ws && (_ws.readyState === WebSocket.OPEN || _ws.readyState === WebSocket.CONNECTING)) return;
+  _ws = new WebSocket(WS_URL);
+  _ws.onopen = () => {
+    _wsReady = true;
+    if (currentUser) wsSend({ type: 'register', client_id: currentUser.username, role: 'sender' });
+  };
+  _ws.onmessage = (event) => {
+    let msg; try { msg = JSON.parse(event.data); } catch { return; }
+    if (_pendingResolvers[msg.type]) {
+      const { resolve, timeout } = _pendingResolvers[msg.type];
+      clearTimeout(timeout); delete _pendingResolvers[msg.type]; resolve(msg); return;
+    }
+    if (msg.type === 'error') toastMsg('⚠ Server: ' + msg.message);
+  };
+  _ws.onerror  = () => { _wsReady = false; };
+  _ws.onclose  = () => {
+    _wsReady = false;
+    if (currentUser) _wsReconnectTimer = setTimeout(wsConnect, 5000);
+  };
+}
+
+function wsSend(msg) {
+  if (_ws && _ws.readyState === WebSocket.OPEN) _ws.send(JSON.stringify(msg));
+  else console.warn('[WS] not connected — dropped:', msg.type);
+}
+
+function wsRequest(sendMsg, expectType, timeoutMs = 8000) {
+  // ── Mock responses ────────────────────────────────────────────────
+  if (MOCK_MODE) {
+    return new Promise(resolve => setTimeout(() => {
+      if (expectType === 'upload_package_ack')
+        resolve({ type: 'upload_package_ack', package_id: 'mock-pkg-' + Date.now() });
+      else
+        resolve({ type: expectType });
+    }, 300));
+  }
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      delete _pendingResolvers[expectType];
+      reject(new Error(`Timeout waiting for '${expectType}'`));
+    }, timeoutMs);
+    _pendingResolvers[expectType] = { resolve, reject, timeout: timer };
+    wsSend(sendMsg);
+  });
+}
+
+function wsDisconnect() {
+  clearTimeout(_wsReconnectTimer);
+  if (_ws) { wsSend({ type: 'session_clear', client_id: currentUser ? currentUser.username : null }); _ws.close(); _ws = null; }
+  _wsReady = false;
+}
+
+wsConnect();
+
+// ── Auth ──────────────────────────────────────────────────────────────
+function doLogout() {
+  wsDisconnect();
+  sessionStorage.removeItem('talus_user');
+  window.location.href = 'login.html';
+}
+
+function toggleProfileMenu() { document.getElementById('profile-dropdown').classList.toggle('open'); }
+document.addEventListener('click', function(e) {
+  const btn = document.getElementById('profile-btn'), drop = document.getElementById('profile-dropdown');
+  if (!btn.contains(e.target) && !drop.contains(e.target)) drop.classList.remove('open');
+});
+
+// ── File attachment ───────────────────────────────────────────────────
+let attachedItems = [];
+
+function openTextModal()  { document.getElementById('text-modal').classList.add('open'); setTimeout(() => document.getElementById('text-input').focus(), 50); }
+function closeTextModal() { document.getElementById('text-modal').classList.remove('open'); }
+function attachText() {
+  const val = document.getElementById('text-input').value.trim();
+  if (!val) { toastMsg('Please enter some text first.'); return; }
+  addItem(val.length > 32 ? val.slice(0,32)+'…' : val, 'text', null, val);
+  document.getElementById('text-input').value = '';
+  closeTextModal();
+}
+document.getElementById('text-modal').addEventListener('click', function(e) { if (e.target === this) closeTextModal(); });
+
+function attachFiles(e, type) {
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
+  files.forEach(f => addItem(f.name, 'file', f));
+  e.target.value = '';
+}
+
+function attachFolder(e) {
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
+  const folderName = files[0].webkitRelativePath.split('/')[0];
+  addItem(folderName, 'folder');
+  e.target.value = '';
+}
+
+async function pasteClipboard() {
+  try {
+    const text = await navigator.clipboard.readText();
+    if (!text.trim()) { toastMsg('Clipboard is empty or not text.'); return; }
+    const preview = '[Clipboard] ' + text.trim().slice(0,30) + (text.length > 30 ? '…' : '');
+    addItem(preview, 'text', null, text.trim());
+  } catch(e) { toastMsg('Clipboard access denied — check browser permissions.'); }
+}
+
+function addItem(name, type, fileObj, fullText) {
+  const id = Date.now() + Math.random();
+  attachedItems.push({ id, name, type, fileObj: fileObj||null, fullText: fullText||null });
+  renderAttached();
+  toastMsg(`"${name}" attached`);
+}
+function removeItem(id) { attachedItems = attachedItems.filter(i => i.id !== id); renderAttached(); }
+function renderAttached() {
+  const count = attachedItems.length;
+  document.getElementById('attach-count').textContent = count;
+  document.getElementById('attach-count-label').textContent = `${count} item(s) attached`;
+  document.getElementById('attached-list').innerHTML = attachedItems.map(item => `
+    <div class="attached-chip" onclick="openPreview(${item.id})" title="Click to preview">
+      <span>${item.type==='folder'?'📁':item.type==='text'?'📝':'📄'}</span>
+      <span class="chip-name">${item.name}</span>
+      <button class="remove-btn" onclick="event.stopPropagation();removeItem(${item.id})">×</button>
+    </div>`).join('');
+}
+
+// ── Recipients ────────────────────────────────────────────────────────
+let recipients = [];
+function addRecipient() {
+  const input = document.getElementById('recipient-input');
+  const val   = input.value.trim();
+  if (!val) { toastMsg('Enter a username#tag to add.'); return; }
+  const match = val.match(/^(.+)#(\d{1,8})$/);
+  if (!match) { toastMsg('Format must be username#0000'); input.focus(); return; }
+  const username = match[1].trim(), tag = match[2];
+  const full = `${username}#${tag}`;
+  if (recipients.find(r=>r.full.toLowerCase()===full.toLowerCase())) { toastMsg(`${full} already added.`); input.value=''; return; }
+  const id = Date.now() + Math.random();
+  recipients.push({ id, username, tag, full });
+  renderRecipients(); input.value=''; toastMsg(`${full} added`);
+}
+function removeRecipient(id) { recipients=recipients.filter(r=>r.id!==id); renderRecipients(); }
+function renderRecipients() {
+  const list = document.getElementById('user-list');
+  if (!recipients.length) {
+    list.innerHTML=`<div style="padding:20px 16px;font-size:13px;color:var(--text-muted);text-align:center;">No recipients yet.<br>Enter a username#tag above.</div>`;
+    return;
+  }
+  list.innerHTML = recipients.map(r=>`
+    <div class="user-item" onclick="openConfirmModal(${r.id})">
+      <div class="avatar">${r.username.slice(0,2).toUpperCase()}</div>
+      <span style="flex:1">${r.username}<span style="opacity:0.6;font-size:12px">#${r.tag}</span></span>
+      <button class="remove-btn" style="font-size:18px;" onclick="event.stopPropagation();removeRecipient(${r.id})">×</button>
+    </div>`).join('');
+}
+renderRecipients();
+
+// ── Confirm & send ────────────────────────────────────────────────────
+function openConfirmModal(id) {
+  if (!attachedItems.length) { toastMsg('Attach something to send first.'); return; }
+  const r = recipients.find(r => r.id === id);
+  if (!r) return;
+  document.getElementById('confirm-avatar').textContent = r.username.slice(0,2).toUpperCase();
+  document.getElementById('confirm-name').textContent   = r.username;
+  document.getElementById('confirm-tag').textContent    = '#' + r.tag;
+  document.getElementById('confirm-items-list').innerHTML = attachedItems.map(item =>
+    `<div class="confirm-item-chip"><span>${item.type==='folder'?'📁':item.type==='text'?'📝':'📄'}</span><span>${item.name}</span></div>`).join('');
+  const labels = ['IP Filter','Device Certification','Track File Views','Time of Day','Limited Access','Watermark','Password / PIN'];
+  const icons  = ['🌐','🔒','👁','🕐','🔢','💧','🔑'];
+  const values = [
+    ipList.length ? ipList.slice(0,2).join(', ')+(ipList.length>2?'…':'') : null,
+    null, null,
+    document.getElementById('tod-value').textContent,
+    document.getElementById('la-value').textContent+' views max',
+    null, null
+  ];
+  const toggles = document.querySelectorAll('.right-col .toggle input');
+  const active = [];
+  toggles.forEach((t,i) => { if (t.checked) active.push({ label:labels[i], icon:icons[i], value:values[i] }); });
+  const optEl = document.getElementById('confirm-options-list');
+  optEl.innerHTML = active.length
+    ? active.map(o=>`<div class="confirm-option-chip"><span>${o.icon}</span><span>${o.label}</span>${o.value?`<span class="confirm-option-value">${o.value}</span>`:''}</div>`).join('')
+    : `<div class="confirm-no-options">No send options enabled.</div>`;
+  document.getElementById('confirm-modal')._recipientId = id;
+  document.getElementById('confirm-modal').classList.add('open');
+}
+
+async function confirmSend() {
+  const id = document.getElementById('confirm-modal')._recipientId;
+  const r  = recipients.find(r => r.id === id);
+  closeModal('confirm-modal');
+  if (!_wsReady) { toastMsg('⚠ Not connected to server.'); return; }
+  const requirements = {};
+  const toggles = document.querySelectorAll('.right-col .toggle input');
+  const optionKeys = ['ip_filter','device_cert','track_views','time_of_day','limited_access','watermark','password'];
+  toggles.forEach((t, i) => { if (t.checked) requirements[optionKeys[i]] = true; });
+  const tod = document.getElementById('tod-value').textContent;
+  if (requirements.time_of_day && tod) requirements.time_of_day_window = tod;
+  const la = parseInt(document.getElementById('la-value').textContent);
+  if (requirements.limited_access && !isNaN(la)) requirements.max_views = la;
+  if (ipList.length) requirements.allowed_ips = ipList;
+  try {
+    const reply = await wsRequest(
+      {
+        type: 'upload_package',
+        sender_id: currentUser.username,
+        receiver_id: r.username + '#' + r.tag,
+        encrypted_file_b64: btoa(JSON.stringify(attachedItems.map(i => ({ name: i.name, type: i.type })))),
+        encrypted_requirements_b64: btoa(JSON.stringify(requirements))
+      },
+      'upload_package_ack',
+      12000
+    );
+    toastMsg(`✓ Sent to ${r.username}#${r.tag} (pkg: ${reply.package_id.slice(0,8)}…)`);
+  } catch (err) {
+    toastMsg('⚠ Send failed — check connection.');
+    console.warn('[WS] confirmSend error:', err);
+  }
+}
+document.getElementById('confirm-modal').addEventListener('click', function(e) { if (e.target===this) closeModal('confirm-modal'); });
+
+// ── File preview ──────────────────────────────────────────────────────
+function openPreview(id) {
+  const item = attachedItems.find(i=>i.id===id);
+  if (!item) return;
+  document.getElementById('preview-icon').textContent = item.type==='folder'?'📁':item.type==='text'?'📝':'📄';
+  document.getElementById('preview-name').textContent = item.name;
+  document.getElementById('preview-type').textContent = item.type.toUpperCase() + (item.fileObj ? ` · ${(item.fileObj.size/1024).toFixed(1)} KB` : '');
+  const body = document.getElementById('preview-body');
+  if (item.type === 'text') {
+    body.textContent = item.fullText || item.name;
+  } else if (item.fileObj && item.fileObj.type.startsWith('text/')) {
+    const reader = new FileReader();
+    reader.onload = e => { body.textContent = e.target.result; };
+    reader.readAsText(item.fileObj);
+    body.textContent = 'Loading…';
+  } else if (item.fileObj && item.fileObj.type.startsWith('image/')) {
+    const url = URL.createObjectURL(item.fileObj);
+    body.innerHTML = `<img src="${url}" style="max-width:100%;border-radius:6px;" onload="URL.revokeObjectURL(this.src)"/>`;
+  } else {
+    body.textContent = item.fileObj
+      ? `File: ${item.fileObj.name}\nSize: ${(item.fileObj.size/1024).toFixed(1)} KB\nType: ${item.fileObj.type||'unknown'}`
+      : `${item.type === 'folder' ? 'Folder' : 'Item'}: ${item.name}\nPreview not available.`;
+  }
+  document.getElementById('preview-modal').classList.add('open');
+}
+document.getElementById('preview-modal').addEventListener('click', function(e) { if (e.target===this) closeModal('preview-modal'); });
+
+// ── Send options ──────────────────────────────────────────────────────
+function openSetting(name) {
+  if (name==='IP') document.getElementById('ip-modal').classList.add('open');
+  else if (name==='Device certification') document.getElementById('cert-modal').classList.add('open');
+  else if (name==='Password/PIN') document.getElementById('pin-modal').classList.add('open');
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function togStr(el) { return el.checked ? 'enabled' : 'disabled'; }
+function editTimeOfDay() {
+  const v = prompt('Time range (e.g. 9:00 - 5:00):', document.getElementById('tod-value').textContent);
+  if (v) { document.getElementById('tod-value').textContent = v; toastMsg('Time of day updated'); }
+}
+function editLimitedAccess() {
+  const v = prompt('Max access count:', document.getElementById('la-value').textContent);
+  if (v && !isNaN(v)) { document.getElementById('la-value').textContent = v; toastMsg('Limited access updated'); }
+}
+
+let ipList = [];
+function addIP() {
+  const input = document.getElementById('ip-input');
+  const val   = input.value.trim();
+  if (!val) return;
+  if (!/^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/.test(val)) { toastMsg('Invalid IP or CIDR format.'); return; }
+  if (ipList.includes(val)) { toastMsg('Already in list.'); input.value=''; return; }
+  ipList.push(val); input.value=''; renderIPList();
+}
+function removeIP(val) { ipList = ipList.filter(i=>i!==val); renderIPList(); }
+function renderIPList() {
+  const el = document.getElementById('ip-list');
+  if (!ipList.length) { el.innerHTML=`<div style="color:var(--text-muted);font-size:13px;padding:8px 4px;">No IPs added yet.</div>`; return; }
+  el.innerHTML = ipList.map(ip=>`<div class="ip-chip"><span>${ip}</span><button onclick="removeIP('${ip}')">×</button></div>`).join('');
+}
+function saveIP() { closeModal('ip-modal'); toastMsg(ipList.length ? `✓ ${ipList.length} IP rule(s) saved` : 'IP list cleared'); }
+
+let currentPinTab='password', pinValue='';
+function switchPinTab(tab) {
+  currentPinTab=tab;
+  document.querySelectorAll('.pin-tab').forEach((b,i)=>b.classList.toggle('active',(i===0&&tab==='password')||(i===1&&tab==='pin')));
+  document.getElementById('pw-panel').classList.toggle('active',tab==='password');
+  document.getElementById('pin-panel-inner').classList.toggle('active',tab==='pin');
+  pinValue=''; updatePinDots();
+}
+function pinKey(k) {
+  if (k==='del') pinValue=pinValue.slice(0,-1);
+  else if (k==='clear') pinValue='';
+  else if (pinValue.length<6) pinValue+=k;
+  updatePinDots();
+}
+function updatePinDots() { for(let i=0;i<6;i++) document.getElementById('pd'+i).classList.toggle('filled',i<pinValue.length); }
+function savePinOrPassword() {
+  if (currentPinTab==='password') {
+    const pw=document.getElementById('pw-input').value, conf=document.getElementById('pw-confirm').value;
+    if (!pw) { toastMsg('Enter a password first.'); return; }
+    if (pw!==conf) { toastMsg('Passwords do not match.'); return; }
+    document.getElementById('pw-saved').style.display='block';
+    toastMsg('✓ Password saved'); setTimeout(()=>closeModal('pin-modal'),800);
+  } else {
+    if (pinValue.length<4) { toastMsg('PIN must be at least 4 digits.'); return; }
+    document.getElementById('pin-saved').style.display='block';
+    toastMsg('✓ PIN saved'); setTimeout(()=>closeModal('pin-modal'),800);
+  }
+}
+['ip-modal','cert-modal','pin-modal'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',function(e){if(e.target===this)closeModal(id);});
+});
+
+// ── Drag & drop ───────────────────────────────────────────────────────
+const overlay = document.getElementById('dropzone-overlay');
+let dragDepth = 0;
+document.addEventListener('dragenter', () => { dragDepth++; overlay.classList.add('show'); });
+document.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; overlay.classList.remove('show'); } });
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => {
+  e.preventDefault(); dragDepth = 0; overlay.classList.remove('show');
+  Array.from(e.dataTransfer.files).forEach(f => addItem(f.name, 'file', f));
+});
+
+// ── Toast ─────────────────────────────────────────────────────────────
+let toastTimer;
+function toastMsg(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+window.addEventListener('beforeunload', wsDisconnect);
+</script>
+</body>
+</html>

@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TALUS — Receive</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+
+<div class="shell">
+  <header>
+    <div><div class="logo">TALUS</div><div class="header-subtitle">Secure File Transfer</div></div>
+    <div class="header-divider"></div>
+    <div class="header-tabs">
+      <button class="tab-btn" onclick="window.location.href='sender.html'">Send</button>
+      <button class="tab-btn active">Receive</button>
+    </div>
+    <div style="position:relative;margin-left:16px;">
+      <button class="profile-btn" id="profile-btn" onclick="toggleProfileMenu()"></button>
+      <div class="profile-dropdown" id="profile-dropdown">
+        <div class="profile-dropdown-header">
+          <div class="profile-dropdown-name" id="profile-display-name"></div>
+          <div class="profile-dropdown-user" id="profile-display-user"></div>
+        </div>
+        <div class="profile-dropdown-item danger" onclick="doLogout()">
+          <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sign Out
+        </div>
+      </div>
+    </div>
+  </header>
+  <main>
+    <div class="panel active" id="receive-panel">
+      <div class="receive-layout">
+        <div class="receive-status-bar">
+          <div class="receive-status-dot" id="receive-dot"></div>
+          <span id="receive-status-text">Listening for incoming transfers…</span>
+          <span class="receive-status-badge" id="receive-badge">0 pending</span>
+          <button class="receive-toggle-btn" id="receive-toggle-btn" onclick="toggleReceive()">Stop</button>
+        </div>
+        <div class="receive-cols">
+          <div class="receive-left">
+            <div class="receive-section-label">Incoming queue</div>
+            <div class="receive-queue" id="receive-queue">
+              <div class="receive-empty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0018 9h-1.26A8 8 0 103 16.29"/></svg>
+                <p>No incoming transfers</p>
+                <small>Transfers sent to you will appear here</small>
+              </div>
+            </div>
+          </div>
+          <div class="receive-right" id="receive-detail">
+            <div class="receive-detail-empty">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 13h6M9 17h4"/></svg>
+              <p>Select a transfer</p>
+              <small>Click an item in the queue to review it</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Receiver password prompt -->
+<div class="modal-overlay" id="receive-pw-modal">
+  <div class="modal" style="width:400px">
+    <div class="modal-title">🔒 Password Required</div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">This transfer is password protected. Enter the password to continue.</p>
+    <div class="field-group">
+      <div class="field-label">Password</div>
+      <div style="position:relative">
+        <input class="field-input" type="password" id="receive-pw-input" placeholder="Enter password…"
+               onkeydown="if(event.key==='Enter') submitReceivePassword()"/>
+        <button onclick="toggleReceivePwVisibility()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);">
+          <svg id="receive-pw-eye" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+      <div class="login-error" id="receive-pw-error"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeReceivePasswordModal()">Cancel</button>
+      <button class="btn-primary" onclick="submitReceivePassword()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Set to false when the real server is running ──────────────────────
+const MOCK_MODE = true;
+const WS_URL    = 'wss://localhost:8765';
+
+// ── Mock transfer data — edit this to test different scenarios ─────────
+const MOCK_TRANSFERS = [
+  {
+    id: 'mock-transfer-1',
+    sender: 'Alice',
+    initials: 'AL',
+    tag: '#1234',
+    time: '2 min ago',
+    status: 'pending',
+    verified: true,
+    passwordRequired: false,
+    passwordVerified: false,
+    timeRestricted: false,
+    withinAllowedWindow: true,
+    files: [
+      { name: 'report.pdf', size: '1.2 MB', type: 'PDF' },
+      { name: 'notes.txt', size: '4 KB', type: 'TXT' }
+    ],
+    options: ['IP Filter', 'Watermark'],
+    maxViews: 5,
+    viewCount: 1
+  },
+  {
+    id: 'mock-transfer-2',
+    sender: 'Bob',
+    initials: 'BO',
+    tag: '#5678',
+    time: '1 hr ago',
+    status: 'accepted',
+    verified: false,
+    passwordRequired: false,
+    passwordVerified: false,
+    timeRestricted: false,
+    withinAllowedWindow: true,
+    files: [
+      { name: 'design.png', size: '3.4 MB', type: 'PNG' }
+    ],
+    options: [],
+    maxViews: null,
+    viewCount: 0
+  },
+  {
+    id: 'mock-transfer-3',
+    sender: 'Carol',
+    initials: 'CA',
+    tag: '#9999',
+    time: '3 hr ago',
+    status: 'pending',
+    verified: true,
+    passwordRequired: true,
+    passwordVerified: false,
+    timeRestricted: false,
+    withinAllowedWindow: true,
+    files: [
+      { name: 'contract.docx', size: '248 KB', type: 'DOCX' }
+    ],
+    options: ['Password / PIN'],
+    maxViews: null,
+    viewCount: 0
+  }
+];
+
+// ── Load user from sessionStorage or use mock ─────────────────────────
+let currentUser;
+if (MOCK_MODE) {
+  currentUser = { username: 'TestUser', userId: 'mock-001', initials: 'TE' };
+} else {
+  const _stored = sessionStorage.getItem('talus_user');
+  if (!_stored) { window.location.href = 'login.html'; }
+  else { currentUser = JSON.parse(_stored); }
+}
+
+// Populate header profile
+document.getElementById('profile-btn').textContent          = currentUser.initials;
+document.getElementById('profile-display-name').textContent = currentUser.username;
+document.getElementById('profile-display-user').textContent = '@' + currentUser.username.toLowerCase().replace(/\s+/g,'');
+
+// ── WebSocket layer ───────────────────────────────────────────────────
+let _ws = null, _wsReady = false, _pendingResolvers = {}, _wsReconnectTimer = null;
+
+function wsConnect() {
+  if (MOCK_MODE) { _wsReady = true; return; }
+  if (_ws && (_ws.readyState === WebSocket.OPEN || _ws.readyState === WebSocket.CONNECTING)) return;
+  _ws = new WebSocket(WS_URL);
+  _ws.onopen = () => {
+    _wsReady = true;
+    if (currentUser) wsSend({ type: 'register', client_id: currentUser.username, role: 'receiver' });
+  };
+  _ws.onmessage = (event) => {
+    let msg; try { msg = JSON.parse(event.data); } catch { return; }
+    if (_pendingResolvers[msg.type]) {
+      const { resolve, timeout } = _pendingResolvers[msg.type];
+      clearTimeout(timeout); delete _pendingResolvers[msg.type]; resolve(msg); return;
+    }
+    if (msg.type === 'incoming_transfer') onIncomingTransfer(msg);
+    else if (msg.type === 'transfer_status_update') onTransferStatusUpdate(msg);
+    else if (msg.type === 'error') toastMsg('⚠ Server: ' + msg.message);
+  };
+  _ws.onerror  = () => { _wsReady = false; };
+  _ws.onclose  = () => {
+    _wsReady = false;
+    if (currentUser) _wsReconnectTimer = setTimeout(wsConnect, 5000);
+  };
+}
+
+function wsSend(msg) {
+  if (_ws && _ws.readyState === WebSocket.OPEN) _ws.send(JSON.stringify(msg));
+  else console.warn('[WS] not connected — dropped:', msg.type);
+}
+
+function wsRequest(sendMsg, expectType, timeoutMs = 8000) {
+  // ── Mock responses ────────────────────────────────────────────────
+  if (MOCK_MODE) {
+    return new Promise(resolve => setTimeout(() => {
+      if (expectType === 'incoming_transfers_list')
+        resolve({ type: 'incoming_transfers_list', transfers: MOCK_TRANSFERS });
+      else if (expectType === 'log_transfer_view_ack')
+        resolve({ type: 'log_transfer_view_ack' });
+      else if (expectType === 'transfer_response_ack')
+        resolve({ type: 'transfer_response_ack' });
+      else if (expectType === 'authorized_file_delivery')
+        resolve({ type: 'authorized_file_delivery', encrypted_file_b64: btoa('mock file content') });
+      else if (expectType === 'verify_transfer_password_ack')
+        resolve({ type: 'verify_transfer_password_ack', status: 'granted' });
+      else
+        resolve({ type: expectType });
+    }, 300));
+  }
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      delete _pendingResolvers[expectType];
+      reject(new Error(`Timeout waiting for '${expectType}'`));
+    }, timeoutMs);
+    _pendingResolvers[expectType] = { resolve, reject, timeout: timer };
+    wsSend(sendMsg);
+  });
+}
+
+function wsDisconnect() {
+  clearTimeout(_wsReconnectTimer);
+  if (_ws) { wsSend({ type: 'session_clear', client_id: currentUser ? currentUser.username : null }); _ws.close(); _ws = null; }
+  _wsReady = false;
+}
+
+wsConnect();
+
+// ── Auth ──────────────────────────────────────────────────────────────
+function doLogout() {
+  wsDisconnect();
+  sessionStorage.removeItem('talus_user');
+  window.location.href = 'login.html';
+}
+
+function toggleProfileMenu() { document.getElementById('profile-dropdown').classList.toggle('open'); }
+document.addEventListener('click', function(e) {
+  const btn = document.getElementById('profile-btn'), drop = document.getElementById('profile-dropdown');
+  if (!btn.contains(e.target) && !drop.contains(e.target)) drop.classList.remove('open');
+});
+
+// ── Receive panel ─────────────────────────────────────────────────────
+let receiveActive = true, receiveItems = [], selectedReceiveId = null;
+
+async function fetchTransfers() {
+  if (!_wsReady) { showReceiveError('Not connected to server. Retrying…'); setTimeout(fetchTransfers, 5000); return; }
+  try {
+    const reply = await wsRequest(
+      { type: 'get_incoming_transfers', client_id: currentUser.username },
+      'incoming_transfers_list'
+    );
+    receiveItems = reply.transfers || [];
+    hideReceiveError();
+    renderReceiveQueue();
+    updateReceiveBadge();
+  } catch (err) {
+    showReceiveError('Could not load transfers — retrying…');
+    setTimeout(fetchTransfers, 10000);
+  }
+}
+
+function onIncomingTransfer(msg) {
+  const existing = receiveItems.find(i => i.id === msg.transfer.id);
+  if (!existing) receiveItems.unshift(msg.transfer);
+  renderReceiveQueue(); updateReceiveBadge();
+  toastMsg(`📥 New transfer from ${msg.transfer.sender}`);
+}
+
+function onTransferStatusUpdate(msg) {
+  receiveItems = receiveItems.map(i => i.id === msg.transfer_id ? { ...i, status: msg.status } : i);
+  renderReceiveQueue(); updateReceiveBadge();
+}
+
+function showReceiveError(msg) {
+  let el = document.getElementById('receive-error-bar');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'receive-error-bar';
+    el.style.cssText = `background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;font-size:13px;font-weight:600;padding:10px 16px;border-radius:var(--radius-sm);margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-shrink:0;`;
+    const layout = document.querySelector('.receive-layout');
+    layout.insertBefore(el, layout.children[1]);
+  }
+  el.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>${msg}`;
+  el.style.display = 'flex';
+}
+function hideReceiveError() {
+  const el = document.getElementById('receive-error-bar');
+  if (el) el.style.display = 'none';
+}
+
+function toggleReceive() {
+  receiveActive = !receiveActive;
+  document.getElementById('receive-dot').classList.toggle('stopped', !receiveActive);
+  document.getElementById('receive-status-text').textContent = receiveActive ? 'Listening for incoming transfers…' : 'Receiver stopped';
+  document.getElementById('receive-toggle-btn').textContent = receiveActive ? 'Stop' : 'Start';
+  wsSend({ type: receiveActive ? 'receiver_start' : 'receiver_stop', client_id: currentUser.username });
+  toastMsg(receiveActive ? '▶ Receiver started' : '■ Receiver stopped');
+}
+
+function updateReceiveBadge() {
+  const n = receiveItems.filter(i => i.status === 'pending').length;
+  document.getElementById('receive-badge').textContent = n + ' pending';
+}
+
+function renderReceiveQueue() {
+  const el = document.getElementById('receive-queue');
+  if (!receiveItems.length) {
+    el.innerHTML = `<div class="receive-empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0018 9h-1.26A8 8 0 103 16.29"/></svg>
+      <p>No incoming transfers</p><small>Transfers sent to you will appear here</small></div>`;
+    return;
+  }
+  el.innerHTML = receiveItems.map(item => `
+    <div class="receive-queue-item${selectedReceiveId === item.id ? ' active' : ''}" onclick="selectReceiveItem('${item.id}')">
+      <div class="rq-avatar">${item.initials}</div>
+      <div class="rq-info">
+        <div class="rq-sender">${item.sender}</div>
+        <div class="rq-meta">${item.files.length} file(s) · ${item.time}</div>
+      </div>
+      <span class="rq-status ${item.status}">${item.status}</span>
+    </div>`).join('');
+}
+
+async function selectReceiveItem(id) {
+  const item = receiveItems.find(i => i.id === id);
+  if (!item) return;
+  if (item.maxViews && item.viewCount >= item.maxViews) {
+    toastMsg('⚠ Maximum view count reached for this transfer.');
+    return;
+  }
+  if (item.timeRestricted && !item.withinAllowedWindow) {
+    showReceiveError(`Access restricted — "${item.sender}" limited to ${item.allowedWindow}.`);
+    return;
+  }
+  if (item.passwordRequired && !item.passwordVerified) {
+    openReceivePasswordModal(id); return;
+  }
+  try {
+    await wsRequest(
+      { type: 'log_transfer_view', transfer_id: id, client_id: currentUser.username },
+      'log_transfer_view_ack'
+    );
+    receiveItems = receiveItems.map(i => i.id === id ? { ...i, viewCount: (i.viewCount || 0) + 1 } : i);
+  } catch { toastMsg('⚠ Could not log view — proceeding anyway.'); }
+  selectedReceiveId = id;
+  renderReceiveQueue();
+  _renderTransferDetail(item);
+}
+
+function _renderTransferDetail(item) {
+  const fileIcon = f => f.type === 'PDF' ? '📄' : f.type === 'PNG' || f.type === 'JPG' ? '🖼' : f.type === 'DOCX' ? '📝' : '📁';
+  const detail = document.getElementById('receive-detail');
+  detail.innerHTML = `
+    <div class="receive-sender-card">
+      <div class="receive-sender-avatar">${item.initials}</div>
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="receive-sender-name">${item.sender}</div>
+          ${item.verified
+            ? `<span style="display:inline-flex;align-items:center;gap:4px;background:#e6f9f0;border:1px solid #a3d9bb;color:#1a6b40;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:600;">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Verified</span>`
+            : `<span style="display:inline-flex;align-items:center;gap:4px;background:#fef9c3;border:1px solid #fcd34d;color:#854d0e;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:600;">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Unverified</span>`
+          }
+        </div>
+        <div class="receive-sender-time">${item.tag} · ${item.time}</div>
+      </div>
+      <span class="receive-status-pill ${item.status}">${item.status}</span>
+    </div>
+
+    <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;">
+      <div class="confirm-items-label">Files included</div>
+      ${item.maxViews
+        ? `<span style="font-family:'Space Mono',monospace;font-size:11px;color:${item.viewCount >= item.maxViews ? '#991b1b' : 'var(--text-muted)'};">${item.viewCount} / ${item.maxViews} views used</span>`
+        : `<span style="font-family:'Space Mono',monospace;font-size:11px;color:var(--text-muted);">Unlimited views</span>`
+      }
+    </div>
+    <div style="margin-top:8px;">
+      <div class="receive-files-list">
+        ${item.files.map(f => `
+          <div class="receive-file-chip">
+            <span>${fileIcon(f)}</span>
+            <span style="flex:1">${f.name}</span>
+            <span style="font-family:'Space Mono',monospace;font-size:11px;color:var(--text-muted)">${f.size} · ${f.type}</span>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    ${item.options && item.options.length ? `
+    <div style="margin-top:12px;">
+      <div class="confirm-items-label">Send options applied</div>
+      <div class="receive-options-list">
+        ${item.options.map(o => `<div class="receive-opt-chip">🔒 <span>${o}</span></div>`).join('')}
+      </div>
+    </div>` : ''}
+
+    ${item.status === 'pending' ? `
+    <div class="receive-detail-actions">
+      <button class="btn-decline" onclick="respondReceive('${item.id}','declined')">Decline</button>
+      <button class="btn-accept" onclick="respondReceive('${item.id}','accepted')">Accept &amp; Download</button>
+    </div>` : `
+    <div style="margin-top:16px;font-size:13px;color:var(--text-muted);">
+      This transfer was <strong>${item.status}</strong>.
+    </div>`}`;
+}
+
+async function respondReceive(id, decision) {
+  receiveItems = receiveItems.map(i => i.id === id ? { ...i, status: decision } : i);
+  try {
+    await wsRequest(
+      { type: 'transfer_response', transfer_id: id, decision, client_id: currentUser.username },
+      'transfer_response_ack'
+    );
+  } catch (err) {
+    toastMsg('⚠ Could not sync status to server.');
+  }
+  if (decision === 'accepted') downloadTransfer(id);
+  selectedReceiveId = null;
+  renderReceiveQueue(); updateReceiveBadge();
+  document.getElementById('receive-detail').innerHTML = `
+    <div class="receive-detail-empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 13h6M9 17h4"/></svg>
+      <p>Transfer ${decision}</p>
+      <small>Select another item from the queue</small>
+    </div>`;
+  toastMsg(decision === 'accepted' ? '✓ Transfer accepted — downloading…' : 'Transfer declined');
+}
+
+async function downloadTransfer(id) {
+  const item = receiveItems.find(i => i.id === id);
+  if (!item) return;
+  try {
+    const reply = await wsRequest(
+      { type: 'request_file_access', receiver_id: currentUser.username, package_id: id, encrypted_receiver_metadata_b64: '' },
+      'authorized_file_delivery',
+      12000
+    );
+    _triggerDownload(reply.encrypted_file_b64, item);
+  } catch (err) {
+    toastMsg('⚠ Download failed — check console.');
+  }
+}
+
+function _triggerDownload(encryptedB64, item) {
+  const blob = new Blob([Uint8Array.from(atob(encryptedB64), c => c.charCodeAt(0))], { type: 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  item.files.forEach(f => { const a = document.createElement('a'); a.href = url; a.download = f.name; a.click(); });
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ── Receiver password prompt ──────────────────────────────────────────
+let pendingPasswordTransferId = null;
+
+function openReceivePasswordModal(id) {
+  pendingPasswordTransferId = id;
+  document.getElementById('receive-pw-input').value = '';
+  document.getElementById('receive-pw-error').textContent = '';
+  document.getElementById('receive-pw-modal').classList.add('open');
+  setTimeout(() => document.getElementById('receive-pw-input').focus(), 50);
+}
+function closeReceivePasswordModal() {
+  pendingPasswordTransferId = null;
+  document.getElementById('receive-pw-modal').classList.remove('open');
+}
+function toggleReceivePwVisibility() {
+  const input = document.getElementById('receive-pw-input');
+  const eye   = document.getElementById('receive-pw-eye');
+  const hide  = input.type === 'password';
+  input.type  = hide ? 'text' : 'password';
+  eye.innerHTML = hide
+    ? `<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>`
+    : `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
+}
+async function submitReceivePassword() {
+  const pw    = document.getElementById('receive-pw-input').value;
+  const errEl = document.getElementById('receive-pw-error');
+  if (!pw) { errEl.textContent = 'Please enter a password.'; return; }
+  const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
+  const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2,'0')).join('');
+  try {
+    const reply = await wsRequest(
+      { type: 'verify_transfer_password', transfer_id: pendingPasswordTransferId, password_hash: hashHex, client_id: currentUser.username },
+      'verify_transfer_password_ack'
+    );
+    if (reply.status === 'denied') { errEl.textContent = 'Invalid password.'; return; }
+    receiveItems = receiveItems.map(i => i.id === pendingPasswordTransferId ? { ...i, passwordVerified: true } : i);
+    closeReceivePasswordModal();
+    selectReceiveItem(pendingPasswordTransferId);
+  } catch (err) { errEl.textContent = 'Could not verify — try again.'; }
+}
+document.getElementById('receive-pw-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeReceivePasswordModal();
+});
+
+// ── Toast ─────────────────────────────────────────────────────────────
+let toastTimer;
+function toastMsg(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+window.addEventListener('beforeunload', wsDisconnect);
+
+// Load transfers on page open
+fetchTransfers();
+</script>
+</body>
+</html>
