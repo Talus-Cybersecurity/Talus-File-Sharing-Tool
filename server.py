@@ -19,8 +19,8 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.fernet import Fernet
 import psycopg2
-from loghelper import build_log_entry, log_sender_event
-
+from loghelper import build_log_entry, log_sender_event, write_log, handle_get_logs
+from logformatting import get_readable_logs
 from backend.schema import Schema
 from backend.database import Database
 from Cryptography import hash_password, verify_password
@@ -64,6 +64,26 @@ public_keys: Dict[str, str] = {}
 sender_session_keys: Dict[str, bytes] = {}
 receiver_session_keys: Dict[str, bytes] = {}
 packages: Dict[str, FilePackage] = {}
+
+async def handle_get_logs(ws, data):
+    client_id = data.get("client_id")
+
+    # VERY SIMPLE admin check (adjust if you have roles stored elsewhere)
+    session = connected_clients.get(client_id)
+
+    if not session or session.role != "admin":
+        await send_json(ws, {
+            "type": "error",
+            "message": "Unauthorized: Admin access required"
+        })
+        return
+
+    logs = get_readable_logs()
+
+    await send_json(ws, {
+        "type": "logs_response",
+        "logs": logs
+    })
 
 def generate_rsa_keypair_if_missing() -> None:
     private_path = Path(SERVER_PRIVATE_KEY_FILE)
@@ -173,7 +193,7 @@ async def handle_create_account(ws: WebSocketServerProtocol, data: Dict[str, Any
             client_id=user_id,
             role="unknown"
         )
-        print(entry)
+        write_log(entry)
 
         await send_json(ws, {
             "type": "error", 
@@ -192,7 +212,7 @@ async def handle_create_account(ws: WebSocketServerProtocol, data: Dict[str, Any
             role="unknown",
             failure_reason="duplicate_user"
         )
-        print(entry)
+        write_log(entry)
 
         await send_json(ws, {
             "type": "error",
@@ -207,7 +227,7 @@ async def handle_create_account(ws: WebSocketServerProtocol, data: Dict[str, Any
         client_id=user_id,
         role="user"
     )
-    print(entry)
+    write_log(entry)
 
     await send_json(ws, {
         "type": "create_account_ack",
@@ -236,7 +256,7 @@ async def handle_login(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> Non
             client_id=username,
             role="user"
         )
-        print(entry)
+        write_log(entry)
         return
 
     user_id = db.get_user_id(username)  
@@ -260,7 +280,7 @@ async def handle_login(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> Non
             role="user",
             failure_reason="invalid_password"
         )
-        print(entry)
+        write_log(entry)
         return
     
     try: 
@@ -272,7 +292,7 @@ async def handle_login(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> Non
                 client_id=user_id,
                 role="user"
             )
-            print(entry)
+            write_log(entry)
             await send_json(ws, {
                 "type": "login_ack",
                 "username": username,
@@ -458,7 +478,7 @@ async def handle_upload_package(ws: WebSocketServerProtocol, data: Dict[str, Any
             client_id=data.get("sender_id"),
             failure_reason=reason
         )
-        print(entry)
+        write_log(entry)
         logging.warning("Rejected sender file post: %s", reason)
         await send_json(ws, {"type": "error", "message": reason})
         return
@@ -486,7 +506,7 @@ async def handle_upload_package(ws: WebSocketServerProtocol, data: Dict[str, Any
             client_id=sender_id,
             file_id="unknown"
         )
-        print(entry)
+        write_log(entry)
         logging.exception("Failed to decrypt requirements")
         await send_json(ws, {"type": "error", "message": "Could not decrypt requirements."})
         return
@@ -542,7 +562,7 @@ async def handle_upload_package(ws: WebSocketServerProtocol, data: Dict[str, Any
         client_id=sender_id,
         file_id=package_id
     )
-    print(entry)
+    write_log(entry)
     await send_json(ws, {"type": "upload_package_ack", "package_id": package_id})
 
 def validate_receiver_against_requirements(
@@ -699,6 +719,8 @@ async def handle_message(ws: WebSocketServerProtocol, raw_message: str) -> None:
             await handle_login(ws, data)
         elif msg_type == "session_clear":
             pass
+        elif msg_type == "get_logs":
+            await handle_get_logs(ws, data)
         else:
             await send_json(ws, {
                 "type": "error",

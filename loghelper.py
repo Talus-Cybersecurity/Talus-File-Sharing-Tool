@@ -1,5 +1,8 @@
 import uuid
 from datetime import datetime, timezone
+import os
+import json
+import shutil
 
 def build_log_entry(event_type, result, message, **kwargs):
     return {
@@ -27,3 +30,90 @@ def log_sender_event(event_type, result, message, **kwargs):
         role="sender",
         **kwargs
     )
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+LOG_PATH = os.path.join(BASE_DIR, "logs", "serverLogs.json")
+BACKUP_DIR = os.path.join(BASE_DIR, "logs", "backups")
+
+def ensure_log_file():
+    os.makedirs(os.path.join(BASE_DIR, "logs"), exist_ok=True)
+
+    if not os.path.exists(LOG_PATH):
+        with open(LOG_PATH, "w", encoding="utf-8") as f:
+            json.dump([], f)
+
+def read_logs():
+    ensure_log_file()
+    with open(LOG_PATH, "r", encoding="utf-8") as f:
+        try:
+            return json.load(f)
+        except:
+            return []
+        
+def write_logs(logs):
+    with open(LOG_PATH, "w", encoding="utf-8") as f:
+        json.dump(logs, f, indent=2)
+
+def write_log(entry):
+    logs = read_logs()
+    logs.append(entry)
+    write_logs(logs)
+
+    check_log_size()
+
+
+def check_log_size(max_size_bytes=1_000_000):  # ~1MB
+    if os.path.exists(LOG_PATH):
+        size = os.path.getsize(LOG_PATH)
+        if size > max_size_bytes:
+            warning_entry = build_log_entry(
+                event_type="log_size_warning",
+                result="warning",
+                message=f"Log file exceeded {max_size_bytes} bytes"
+            )
+            logs = read_logs()
+            logs.append(warning_entry)
+            write_logs(logs)
+
+
+def backup_logs():
+    os.makedirs(BACKUP_DIR, exist_ok=True)
+
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    backup_path = os.path.join(BACKUP_DIR, f"serverLogs_{timestamp}.json")
+
+    shutil.copy(LOG_PATH, backup_path)
+
+    backup_entry = build_log_entry(
+        event_type="log_backup_created",
+        result="success",
+        message=f"Backup created: {backup_path}"
+    )
+
+    logs = read_logs()
+    logs.append(backup_entry)
+    write_logs(logs)
+
+#fixing commit error
+
+from logformatting import get_readable_logs
+
+async def handle_get_logs(ws, data):
+    client_id = data.get("client_id")
+
+    # VERY SIMPLE admin check (adjust if you have roles stored elsewhere)
+    session = connected_clients.get(client_id)
+
+    if not session or session.role != "admin":
+        await send_json(ws, {
+            "type": "error",
+            "message": "Unauthorized: Admin access required"
+        })
+        return
+
+    logs = get_readable_logs()
+
+    await send_json(ws, {
+        "type": "logs_response",
+        "logs": logs
+    })
