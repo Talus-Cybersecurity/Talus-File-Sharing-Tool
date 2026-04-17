@@ -581,6 +581,30 @@ def validate_receiver_against_requirements(
                     return False, f"Access denied: outside allowed time window ({min_hour}:00–{max_hour}:00 UTC, current hour is {server_hour}:00 UTC)"
             continue
 
+        # TALUS-232: Verify IP address using websocket
+        if field_name == "ip_address":
+            if expected_value is not None and ws_ip is not None:
+                if ws_ip != expected_value:
+                    return False, f"Access denied: your IP address is not permitted"
+            continue
+ 
+        # All other fields — check against receiver-supplied metadata as before
+        if field_name not in receiver_metadata:
+            return False, f"Access denied: missing required field '{field_name}'"
+ 
+        actual_value = receiver_metadata[field_name]
+ 
+        if isinstance(expected_value, dict):
+            if "min" in expected_value and actual_value < expected_value["min"]:
+                return False, f"Access denied: '{field_name}' is below the minimum allowed value"
+            if "max" in expected_value and actual_value > expected_value["max"]:
+                return False, f"Access denied: '{field_name}' exceeds the maximum allowed value"
+        else:
+            if actual_value != expected_value:
+                return False, f"Access denied: '{field_name}' does not match the required value"
+ 
+    return True, None
+
 # TALUS-194: Detect if incoming is file access request
 def is_file_access_request(data: dict) -> tuple[bool, str | None]:
     if data.get("type") != "request_file_access":
@@ -621,50 +645,11 @@ async def handle_request_file_access(ws: WebSocketServerProtocol, data: Dict[str
         logging.exception("Failed to decrypt receiver metadata")
         await send_json(ws, {"type": "error", "message": "Could not decrypt receiver metadata."})
         return
- 
-    allowed, failed_field = validate_receiver_against_requirements(
-        receiver_metadata,
-        package.parsed_requirements or {}
-    )
- 
-    access_status = "granted" if allowed else f"denied:{failed_field}"
- 
-    try:
-        db.insert_access_log(
-            log_id=str(uuid.uuid4()),
-            user_id=receiver_id,
-            file_id=package_id,
-            access_attempts=1,
-            timestamps=datetime.now(timezone.utc),
-            ip_address=receiver_metadata.get("ip_address"),
-            access_status=access_status
-        )
-    except Exception:
-        logging.exception("insert_access_log failed for package_id=%s", package_id)
- 
-    logging.info(
-        "Access request package_id=%s receiver_id=%s allowed=%s failed_field=%s",
-        package_id, receiver_id, allowed, failed_field
-    )
- 
-    if allowed:
-        await send_json(ws, {
-            "type": "authorized_file_delivery",
-            "package_id": package_id,
-            "encrypted_file_b64": package.encrypted_file_b64
-        })
-        package.delivered = True
-    else:
-        error_payload = {
-            "status": "denied",
-            "failed_field": failed_field,
-            "message": "Receiver metadata did not satisfy sender requirements."
-        }
-        encrypted_error = fernet_encrypt(session_key, json.dumps(error_payload).encode("utf-8"))
-        await send_json(ws, {
-            "type": "authorization_denied",
-            "encrypted_error_b64": encode_b64(encrypted_error)
-        })
+        
+    # TALUS-233 Placeholder
+    
+    # TALUS-232 - Get IP from websocket
+    ws_ip = ws.remote_address[0] if ws.remote_address else None
 
 async def client_handler(ws: WebSocketServerProtocol) -> None:
     logging.info("Client connected")
