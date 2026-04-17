@@ -30,7 +30,15 @@ class Database:
             WHERE username = %s""", (username,))
         row = self.schema.cur.fetchone()
         return row[0] if row else None # returns user's user_id
-    
+
+    def get_file_policy(self, file_id: str): # return FilePolicy row given the file_id
+        self.schema.cur.execute("""
+            SELECT ip_address, access_count, hour_range,
+                device_verification, location, watermark, biometrics
+            FROM "FilePolicy"
+            WHERE file_id = %s
+        """, (file_id,))
+        return self.schema.cur.fetchone(()
 
     def check_if_user_exists(self, username):
         self.schema.cur.execute("""
