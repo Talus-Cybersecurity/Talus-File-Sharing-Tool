@@ -568,25 +568,18 @@ async def handle_upload_package(ws: WebSocketServerProtocol, data: Dict[str, Any
 def validate_receiver_against_requirements(
     receiver_metadata: Dict[str, Any],
     requirements: Dict[str, Any]
-) -> tuple[bool, Optional[str]]:
+    ws_ip: str = None
+) -> tuple[bool, str | None]:
     for field_name, expected_value in requirements.items():
-        if field_name not in receiver_metadata:
-            return False, field_name
-
-        actual_value = receiver_metadata[field_name]
-
-        if isinstance(expected_value, dict):
-            # Example structure:
-            # "hour_range": {"min": 8, "max": 17}
-            if "min" in expected_value and actual_value < expected_value["min"]:
-                return False, field_name
-            if "max" in expected_value and actual_value > expected_value["max"]:
-                return False, field_name
-        else:
-            if actual_value != expected_value:
-                return False, field_name
-
-    return True, None
+        # TALUS-231: Verify time of day in hour range
+        if field_name == "hour_range":
+            server_hour = datetime.now(timezone.utc).hour
+            if isinstance(expected_value, dict):
+                min_hour = expected_value.get("min", 0)
+                max_hour = expected_value.get("max", 23)
+                if not (min_hour <= server_hour <= max_hour):
+                    return False, f"Access denied: outside allowed time window ({min_hour}:00–{max_hour}:00 UTC, current hour is {server_hour}:00 UTC)"
+            continue
 
 # TALUS-194: Detect if incoming is file access request
 def is_file_access_request(data: dict) -> tuple[bool, str | None]:
