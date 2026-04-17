@@ -47,13 +47,44 @@ function toastMsg(msg) {
   toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
 }
 
+function _fromB64(b64) {
+  const bin = atob(b64);
+  return Uint8Array.from(bin, c => c.charCodeAt(0));
+}
+
+async function _unwrapPrivateKey(password, pbkdf2SaltB64, aesIvB64, encryptedPrivateKeyB64) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']
+  );
+  const aesKey = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: _fromB64(pbkdf2SaltB64), iterations: 600000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['unwrapKey']
+  );
+  return crypto.subtle.unwrapKey(
+    'pkcs8',
+    _fromB64(encryptedPrivateKeyB64),
+    aesKey,
+    { name: 'AES-GCM', iv: _fromB64(aesIvB64) },
+    { name: 'RSA-OAEP', hash: 'SHA-256' },
+    true,
+    ['decrypt']
+  );
+}
+
 // Store user in sessionStorage so sender/receiver pages can read it
-function _afterLogin(username, userId) {
+async function _afterLogin(username, userId, privateKey) {
+  const exportedKey = await crypto.subtle.exportKey('pkcs8', privateKey);
+  const keyB64 = btoa(String.fromCharCode(...new Uint8Array(exportedKey)));
   sessionStorage.setItem('talus_user', JSON.stringify({
     username,
     userId,
     initials: username.slice(0, 2).toUpperCase()
   }));
+  sessionStorage.setItem('talus_private_key', keyB64);
   window.location.href = 'sender.html';
 }
 
@@ -71,13 +102,19 @@ async function doLogin() {
   if (MOCK_MODE) {
     setTimeout(() => {
       btn.textContent = 'Sign In'; btn.disabled = false;
-      _afterLogin(username, 'mock-user-id');
+      sessionStorage.setItem('talus_user', JSON.stringify({
+        username, userId: 'mock-user-id', initials: username.slice(0, 2).toUpperCase()
+      }));
+      window.location.href = 'sender.html';
     }, 400);
     return;
   }
 
   // ── Real mode ─────────────────────────────────────────────────────────
   try {
+    const passwordHashBuf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password));
+    const passwordHash    = Array.from(new Uint8Array(passwordHashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+
     const tempWs = new WebSocket(WS_URL);
     await new Promise((res, rej) => {
       tempWs.onopen  = res;
@@ -87,11 +124,21 @@ async function doLogin() {
       const t = setTimeout(() => rej(new Error('TIMEOUT')), 8000);
       tempWs.onmessage = e => { clearTimeout(t); res(JSON.parse(e.data)); };
       tempWs.onerror   = () => { clearTimeout(t); rej(new Error('CONNECTION_ERROR')); };
-      tempWs.send(JSON.stringify({ type: 'login', username, password }));
+      tempWs.send(JSON.stringify({ type: 'login', username, password_hash: passwordHash }));
     });
     tempWs.close();
 
-    if (reply.type === 'login_ack') { _afterLogin(username, reply.user_id); return; }
+    if (reply.type === 'login_ack') {
+      btn.textContent = 'Decrypting keys…';
+      const privateKey = await _unwrapPrivateKey(
+        password,
+        reply.pbkdf2_salt,
+        reply.aes_iv,
+        reply.encrypted_private_key
+      );
+      await _afterLogin(username, reply.user_id, privateKey);
+      return;
+    }
     errEl.textContent = reply.message || 'Invalid username or password.';
 
   } catch (err) {
