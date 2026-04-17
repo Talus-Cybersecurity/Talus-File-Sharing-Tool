@@ -40,6 +40,16 @@ class Database:
         """, (file_id,))
         return self.schema.cur.fetchone(()
 
+    # Return how many times file has been accessed
+    def get_access_count(self, file_id: str) -> int:
+        self.schema.cur.execute("""
+            SELECT COUNT(*) FROM "AccessLog"
+            WHERE file_id = %s
+            AND access_status = 'granted'
+        """, (file_id,))
+        row = self.schema.cur.fetchone()
+        return row[0] if row else 0
+
     def check_if_user_exists(self, username):
         self.schema.cur.execute("""
             SELECT username FROM "User"
