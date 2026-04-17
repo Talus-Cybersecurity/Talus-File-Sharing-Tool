@@ -646,8 +646,24 @@ async def handle_request_file_access(ws: WebSocketServerProtocol, data: Dict[str
         await send_json(ws, {"type": "error", "message": "Could not decrypt receiver metadata."})
         return
         
-    # TALUS-233 Placeholder
-    
+    # TALUS-233 Check access count from AccessLog
+    requirements = package.parsed_requirements or {}
+    if "access_count" in requirements and requirements["access_count"] is not None:
+        current_count = db.get_access_count(package_id)
+        if current_count >= requirements["access_count"]:
+            await send_json(ws, {
+                "type": "authorization_denied",
+                "encrypted_error_b64": encode_b64(fernet_encrypt(
+                    session_key,
+                    json.dumps({
+                        "status": "denied",
+                        "failed_field": "access_count",
+                        "message": f"Access denied: file has reached its maximum view limit ({requirements['access_count']} views)"
+                    }).encode("utf-8")
+                ))
+            })
+            return
+            
     # TALUS-232 - Get IP from websocket
     ws_ip = ws.remote_address[0] if ws.remote_address else None
 
