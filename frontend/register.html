@@ -139,6 +139,10 @@ async function doRegister() {
 
   // ── Real mode ─────────────────────────────────────────────────────────
   try {
+    btn.textContent = 'Generating keys…';
+    const keys = await generateUserKeys(password);
+    btn.textContent = 'Creating…';
+
     const tempWs = new WebSocket(WS_URL);
     await new Promise((res, rej) => {
       tempWs.onopen  = res;
@@ -148,7 +152,7 @@ async function doRegister() {
       const t = setTimeout(() => rej(new Error('TIMEOUT')), 8000);
       tempWs.onmessage = e => { clearTimeout(t); res(JSON.parse(e.data)); };
       tempWs.onerror   = () => { clearTimeout(t); rej(new Error('CONNECTION_ERROR')); };
-      tempWs.send(JSON.stringify({ type: 'create_account', username, password, tag_id: tag, email }));
+      tempWs.send(JSON.stringify({ type: 'create_account', username, tag_id: tag, email, ...keys }));
     });
     tempWs.close();
 
@@ -281,6 +285,45 @@ async function doVerifyEmail() {
   } finally {
     btn.textContent = 'Verify Email'; btn.disabled = _getCode().length !== 6;
   }
+}
+
+async function generateUserKeys(password) {
+  const enc  = new TextEncoder();
+  const toB64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+
+  const pbkdf2Salt = crypto.getRandomValues(new Uint8Array(16));
+  const aesIv      = crypto.getRandomValues(new Uint8Array(12));
+
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']
+  );
+  const aesKey = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: pbkdf2Salt, iterations: 600000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['wrapKey']
+  );
+
+  const keyPair = await crypto.subtle.generateKey(
+    { name: 'RSA-OAEP', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' },
+    true,
+    ['encrypt', 'decrypt']
+  );
+
+  const [wrappedPrivateKey, publicKeySpki, passwordHashBuf] = await Promise.all([
+    crypto.subtle.wrapKey('pkcs8', keyPair.privateKey, aesKey, { name: 'AES-GCM', iv: aesIv }),
+    crypto.subtle.exportKey('spki', keyPair.publicKey),
+    crypto.subtle.digest('SHA-256', enc.encode(password))
+  ]);
+
+  return {
+    public_key_spki:       toB64(publicKeySpki),
+    encrypted_private_key: toB64(wrappedPrivateKey),
+    pbkdf2_salt:           toB64(pbkdf2Salt),
+    aes_iv:                toB64(aesIv),
+    password_hash:         Array.from(new Uint8Array(passwordHashBuf)).map(b => b.toString(16).padStart(2, '0')).join('')
+  };
 }
 
 async function doResendCode() {
