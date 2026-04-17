@@ -688,6 +688,54 @@ async def client_handler(ws: WebSocketServerProtocol) -> None:
             connected_clients.pop(client_id, None)
             logging.info("Cleaned session for client_id=%s", client_id)
 
+    # TALUS-231, 232, 234
+    allowed, failed_field = validate_receiver_against_requirements(
+        receiver_metadata,
+        requirements,
+        ws_ip=ws_ip
+    )
+ 
+    access_status = "granted" if allowed else f"denied:{failed_field}"
+ 
+    try:
+        db.insert_access_log(
+            log_id=str(uuid.uuid4()),
+            user_id=receiver_id,
+            file_id=package_id,
+            access_attempts=1,
+            timestamps=datetime.now(timezone.utc),
+            ip_address=ws_ip,
+            access_status=access_status
+        )
+    except Exception:
+        logging.exception("insert_access_log failed for package_id=%s", package_id)
+ 
+    logging.info(
+        "Access request package_id=%s receiver_id=%s allowed=%s",
+        package_id, receiver_id, allowed
+    )
+ 
+    if allowed:
+        await send_json(ws, {
+            "type": "authorized_file_delivery",
+            "package_id": package_id,
+            "encrypted_file_b64": package.encrypted_file_b64
+        })
+        package.delivered = True
+    else:
+        # TALUS-234 — human-readable denial reason
+        error_payload = {
+            "status": "denied",
+            "failed_field": failed_field,
+            "message": failed_field  # already a human-readable string from validate_receiver_against_requirements
+        }
+        encrypted_error = fernet_encrypt(session_key, json.dumps(error_payload).encode("utf-8"))
+        await send_json(ws, {
+            "type": "authorization_denied",
+            "encrypted_error_b64": encode_b64(encrypted_error)
+        })
+ 
+
 
 async def handle_message(ws: WebSocketServerProtocol, raw_message: str) -> None:
     try:
