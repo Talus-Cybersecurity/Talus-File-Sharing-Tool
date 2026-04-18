@@ -23,6 +23,7 @@ class Schema:
                 email TEXT NOT NULL UNIQUE,
                 password TEXT NOT NULL,
                 tag_id TEXT
+                is_verified BOOLEAN NOT NULL DEFAULT FALSE
             )
         """)  
 
@@ -76,8 +77,21 @@ class Schema:
                 FOREIGN KEY (file_id) REFERENCES "File"(file_id)
             )
         """)
+        
+    def create_email_verification_table(self):
+        self.cur.execute("""
+            CREATE TABLE IF NOT EXISTS "EmailVerification" (
+                token_id   TEXT PRIMARY KEY,
+                user_id    TEXT NOT NULL,
+                token      TEXT NOT NULL,
+                expires_at TIMESTAMP NOT NULL,
+                used       BOOLEAN NOT NULL DEFAULT FALSE,
+                FOREIGN KEY (user_id) REFERENCES "User"(user_id)
+            )
+        """)
 
     def delete_all_tables(self):
+        self.cur.execute("""DROP TABLE IF EXISTS "EmailVerification" CASCASE;""")
         self.cur.execute("""DROP TABLE IF EXISTS "FilePolicy" CASCADE;""")
         self.cur.execute("""DROP TABLE IF EXISTS "File" CASCADE;""")
         self.cur.execute("""DROP TABLE IF EXISTS "AccessLog" CASCADE;""")
@@ -89,6 +103,7 @@ class Schema:
         self.create_accesslog_table()
         self.create_file_table()
         self.create_filepolicy_table()
+        self.create_email_verification_table()
         # self.delete_all_tables()
         self.con.commit()
         self.con.close()
