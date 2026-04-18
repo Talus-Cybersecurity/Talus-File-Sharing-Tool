@@ -38,7 +38,7 @@ class Database:
             FROM "FilePolicy"
             WHERE file_id = %s
         """, (file_id,))
-        return self.schema.cur.fetchone(()
+        return self.schema.cur.fetchone()
 
     # Return how many times file has been accessed
     def get_access_count(self, file_id: str) -> int:
