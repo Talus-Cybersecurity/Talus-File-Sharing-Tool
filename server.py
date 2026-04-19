@@ -247,6 +247,31 @@ async def handle_create_account(ws: WebSocketServerProtocol, data: Dict[str, Any
         "user_id": user_id
     })
 
+async def handle_verify_email(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
+    # Verifies the user's email using the 6 digit code they received.
+    user_id = (data.get("user_id") or "").strip()
+    code    = (data.get("code") or "").strip()
+ 
+    if not user_id or not code:
+        await send_json(ws, {"type": "error",
+            "message": "user_id and code are required."})
+        return
+ 
+    row = db.get_verification_token(user_id, code)
+    if row is None:
+        await send_json(ws, {"type": "error",
+            "message": "Invalid or expired verification code."})
+        return
+ 
+    token_id = row[0]
+    db.mark_token_used(token_id)
+    db.verify_user(user_id)
+ 
+    logging.info("Email verified for user_id=%s", user_id)
+    await send_json(ws, {
+        "type": "verify_email_ack",
+        "message": "Email verified. You can now log in."
+    })
 
 async def handle_login(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None: 
     username = data["username"]
@@ -772,6 +797,8 @@ async def handle_message(ws: WebSocketServerProtocol, raw_message: str) -> None:
             await handle_create_account(ws, data)
         elif msg_type == "login":
             await handle_login(ws, data)
+        elif msg_type == "verify_email":
+            await handle_verify_email(ws, data)
         elif msg_type == "session_clear":
             pass
         elif msg_type == "get_logs":
