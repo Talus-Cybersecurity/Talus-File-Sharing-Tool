@@ -5,6 +5,8 @@ import base64
 import json
 import websockets
 from websockets.server import WebSocketServerProtocol
+from email_service import generate_verification_code, send_verification_email
+from datetime import timedelta
 
 import uuid
 from dataclasses import dataclass, field
@@ -219,6 +221,17 @@ async def handle_create_account(ws: WebSocketServerProtocol, data: Dict[str, Any
             "message": "Username or email is already taken."
         })
         return
+        
+    # Generate verification code
+    code       = generate_verification_code()
+    token_id   = str(uuid.uuid4())
+    expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=10)
+    db.insert_verification_token(token_id, user_id, code, expires_at)
+ 
+    # Send the email
+    sent = send_verification_email(email, code)
+    if not sent:
+        logging.warning("Failed to send verification email to %s", email)
     
     entry = build_log_entry(
         event_type="register_success",
