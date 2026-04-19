@@ -50,6 +50,52 @@ class Database:
         row = self.schema.cur.fetchone()
         return row[0] if row else 0
 
+     def insert_verification_token(self, token_id: str, user_id: str,
+                                   token: str, expires_at):
+        # Stores a new verification token for user.
+        self.schema.cur.execute("""
+            INSERT INTO "EmailVerification" (token_id, user_id, token, expires_at, used)
+            VALUES (%s, %s, %s, %s, FALSE)
+        """, (token_id, user_id, token, expires_at))
+        self.schema.con.commit()
+ 
+    def get_verification_token(self, user_id: str, token: str):
+        self.schema.cur.execute("""
+            SELECT token_id, expires_at, used
+            FROM "EmailVerification"
+            WHERE user_id = %s
+            AND token = %s
+            AND used = FALSE
+            AND expires_at > NOW()
+        """, (user_id, token))
+        return self.schema.cur.fetchone()
+ 
+    def mark_token_used(self, token_id: str):
+        # Marks used tokens
+        self.schema.cur.execute("""
+            UPDATE "EmailVerification"
+            SET used = TRUE
+            WHERE token_id = %s
+        """, (token_id,))
+        self.schema.con.commit()
+ 
+    def verify_user(self, user_id: str):
+        self.schema.cur.execute("""
+            UPDATE "User"
+            SET is_verified = TRUE
+            WHERE user_id = %s
+        """, (user_id,))
+        self.schema.con.commit()
+ 
+    def is_user_verified(self, username: str) -> bool:
+        # Return if user verified email
+        self.schema.cur.execute("""
+            SELECT is_verified FROM "User"
+            WHERE username = %s
+        """, (username,))
+        row = self.schema.cur.fetchone()
+        return row[0] if row else False
+
     def check_if_user_exists(self, username):
         self.schema.cur.execute("""
             SELECT username FROM "User"
