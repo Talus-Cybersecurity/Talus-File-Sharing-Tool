@@ -612,11 +612,12 @@ async def handle_upload_package(ws: WebSocketServerProtocol, data: Dict[str, Any
 
 def validate_receiver_against_requirements(
     receiver_metadata: Dict[str, Any],
-    requirements: Dict[str, Any]
+    requirements: Dict[str, Any],
     ws_ip: str = None
 ) -> tuple[bool, str | None]:
     for field_name, expected_value in requirements.items():
-        # TALUS-231: Verify time of day in hour range
+ 
+        # TALUS-231 time-of-day: use server clock
         if field_name == "hour_range":
             server_hour = datetime.now(timezone.utc).hour
             if isinstance(expected_value, dict):
@@ -625,15 +626,15 @@ def validate_receiver_against_requirements(
                 if not (min_hour <= server_hour <= max_hour):
                     return False, f"Access denied: outside allowed time window ({min_hour}:00–{max_hour}:00 UTC, current hour is {server_hour}:00 UTC)"
             continue
-
-        # TALUS-232: Verify IP address using websocket
+ 
+        # TALUS-232 IP address: use WebSocket connection IP
         if field_name == "ip_address":
             if expected_value is not None and ws_ip is not None:
                 if ws_ip != expected_value:
-                    return False, f"Access denied: your IP address is not permitted"
+                    return False, "Access denied: your IP address is not permitted"
             continue
  
-        # All other fields — check against receiver-supplied metadata as before
+        # All other fields
         if field_name not in receiver_metadata:
             return False, f"Access denied: missing required field '{field_name}'"
  
@@ -712,27 +713,6 @@ async def handle_request_file_access(ws: WebSocketServerProtocol, data: Dict[str
     # TALUS-232 - Get IP from websocket
     ws_ip = ws.remote_address[0] if ws.remote_address else None
 
-async def client_handler(ws: WebSocketServerProtocol) -> None:
-    logging.info("Client connected")
-
-    try:
-        async for message in ws:
-            await handle_message(ws, message)
-
-    except websockets.ConnectionClosed:
-        logging.info("Client disconnected")
-
-    finally:
-        # Clean up disconnected sessions
-        disconnected_ids = [
-            client_id
-            for client_id, session in connected_clients.items()
-            if session.websocket == ws
-        ]
-        for client_id in disconnected_ids:
-            connected_clients.pop(client_id, None)
-            logging.info("Cleaned session for client_id=%s", client_id)
-
     # TALUS-231, 232, 234
     allowed, failed_field = validate_receiver_against_requirements(
         receiver_metadata,
@@ -780,7 +760,26 @@ async def client_handler(ws: WebSocketServerProtocol) -> None:
             "encrypted_error_b64": encode_b64(encrypted_error)
         })
  
+async def client_handler(ws: WebSocketServerProtocol) -> None:
+    logging.info("Client connected")
 
+    try:
+        async for message in ws:
+            await handle_message(ws, message)
+
+    except websockets.ConnectionClosed:
+        logging.info("Client disconnected")
+
+    finally:
+        # Clean up disconnected sessions
+        disconnected_ids = [
+            client_id
+            for client_id, session in connected_clients.items()
+            if session.websocket == ws
+        ]
+        for client_id in disconnected_ids:
+            connected_clients.pop(client_id, None)
+            logging.info("Cleaned session for client_id=%s", client_id)
 
 async def handle_message(ws: WebSocketServerProtocol, raw_message: str) -> None:
     try:
