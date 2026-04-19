@@ -298,6 +298,13 @@ async def handle_login(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> Non
         return
 
     user_id = db.get_user_id(username)  
+    
+    # Check if user is verified
+    if not db.is_user_verified(username):
+        await send_json(ws, {"type": "error",
+            "message": "Please verify your email before logging in."})
+        return
+        
     # Get database password using the username
     get_db_hash = db.get_password(username)
 
