@@ -720,6 +720,23 @@ async def handle_transfer_response(ws: WebSocketServerProtocol, data: Dict[str, 
         packages[package_id].delivered = True
     await send_json(ws, {"type": "transfer_response_ack"})
 
+async def handle_delete_transfer(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
+    package_id = data.get("package_id")
+    if not package_id:
+        await send_json(ws, {"type": "error", "message": "Missing package_id."})
+        return
+
+    packages.pop(package_id, None)
+
+    try:
+        db.delete_file_policy(package_id)
+        db.delete_file(package_id)
+    except Exception:
+        logging.exception("Failed to delete package_id=%s from DB", package_id)
+
+    logging.info("Deleted package_id=%s", package_id)
+    await send_json(ws, {"type": "delete_transfer_ack", "package_id": package_id})
+
 
 async def handle_request_file_access(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
     valid, reason = is_file_access_request(data)
@@ -861,6 +878,8 @@ async def handle_message(ws: WebSocketServerProtocol, raw_message: str) -> None:
             await handle_log_transfer_view(ws, data)
         elif msg_type == "transfer_response":
             await handle_transfer_response(ws, data)
+        elif msg_type == "delete_transfer":
+            await handle_delete_transfer(ws, data)
         elif msg_type == "request_file_access":
             await handle_request_file_access(ws, data)
         elif msg_type == "create_account":

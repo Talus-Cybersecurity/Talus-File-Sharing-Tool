@@ -89,6 +89,22 @@ class Database:
             self.schema.con.rollback()
             raise
     
+    def delete_file(self, file_id: str):
+        try:
+            self._execute("""DELETE FROM "File" WHERE file_id = %s""", (file_id,))
+            self.schema.con.commit()
+        except Exception:
+            self.schema.con.rollback()
+            raise
+
+    def delete_file_policy(self, file_id: str):
+        try:
+            self._execute("""DELETE FROM "FilePolicy" WHERE file_id = %s""", (file_id,))
+            self.schema.con.commit()
+        except Exception:
+            self.schema.con.rollback()
+            raise
+
     # Insert file information into the database when a user uploads a file
     def insert_file(self, file_id, log_id, owner_id, file_type, upload_timestamp, file_size, file_name, file_path):
         try:

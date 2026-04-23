@@ -85,6 +85,18 @@
   </div>
 </div>
 
+<!-- Delete confirmation modal -->
+<div class="modal-overlay" id="delete-confirm-modal">
+  <div class="modal" style="width:380px">
+    <div class="modal-title">🗑 Discard Transfer?</div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;">This will permanently delete the transfer from the server. This action cannot be undone.</p>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeDeleteModal()">Cancel</button>
+      <button class="btn-decline" onclick="confirmDelete()">Discard</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -384,6 +396,11 @@ function renderReceiveQueue() {
         <div class="rq-meta">${item.files.length} file(s) · ${item.time}</div>
       </div>
       <span class="rq-status ${item.status}">${item.status}</span>
+      <button onclick="event.stopPropagation(); openDeleteModal('${item.id}')" title="Discard transfer"
+        style="background:none;border:none;cursor:pointer;color:var(--text-muted);padding:4px;margin-left:6px;display:flex;align-items:center;border-radius:4px;"
+        onmouseover="this.style.color='#991b1b'" onmouseout="this.style.color='var(--text-muted)'">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      </button>
     </div>`).join('');
 }
 
@@ -612,6 +629,41 @@ async function submitReceivePassword() {
 }
 document.getElementById('receive-pw-modal').addEventListener('click', function(e) {
   if (e.target === this) closeReceivePasswordModal();
+});
+
+// ── Delete transfer ───────────────────────────────────────────────────
+let _pendingDeleteId = null;
+
+function openDeleteModal(id) {
+  _pendingDeleteId = id;
+  document.getElementById('delete-confirm-modal').classList.add('open');
+}
+function closeDeleteModal() {
+  _pendingDeleteId = null;
+  document.getElementById('delete-confirm-modal').classList.remove('open');
+}
+async function confirmDelete() {
+  const id = _pendingDeleteId;
+  closeDeleteModal();
+  if (!id) return;
+  try {
+    await wsRequest({ type: 'delete_transfer', package_id: id }, 'delete_transfer_ack');
+  } catch { toastMsg('⚠ Could not delete from server.'); }
+  receiveItems = receiveItems.filter(i => i.id !== id);
+  if (selectedReceiveId === id) {
+    selectedReceiveId = null;
+    document.getElementById('receive-detail').innerHTML = `
+      <div class="receive-detail-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 13h6M9 17h4"/></svg>
+        <p>Select a transfer</p><small>Click an item in the queue to review it</small>
+      </div>`;
+  }
+  renderReceiveQueue();
+  updateReceiveBadge();
+  toastMsg('Transfer discarded.');
+}
+document.getElementById('delete-confirm-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeDeleteModal();
 });
 
 // ── Toast ─────────────────────────────────────────────────────────────

@@ -754,5 +754,61 @@
     "file_id": "2f0a6d83-f75e-419e-b91e-7a40badaa7bf",
     "failure_reason": null,
     "access_count_after": null
+  },
+  {
+    "event_id": "657fb88f-f746-4c21-8323-fdfbddcfdc53",
+    "timestamp_utc": "2026-04-23T09:22:19.009257+00:00",
+    "event_type": "login_success",
+    "result": "success",
+    "message": "User logged in",
+    "client_id": "7074bc6a-f20f-4595-a434-3389eb73e4a6",
+    "role": "user",
+    "ip": null,
+    "auth_method": null,
+    "file_id": null,
+    "failure_reason": null,
+    "access_count_after": null
+  },
+  {
+    "event_id": "9dd07824-b54e-4912-a40c-67360b9b29c4",
+    "timestamp_utc": "2026-04-23T09:22:40.975010+00:00",
+    "event_type": "login_success",
+    "result": "success",
+    "message": "User logged in",
+    "client_id": "6eaad9d4-6f0c-4c99-a8c2-4b96d155e174",
+    "role": "user",
+    "ip": null,
+    "auth_method": null,
+    "file_id": null,
+    "failure_reason": null,
+    "access_count_after": null
+  },
+  {
+    "event_id": "c8900bc3-f6b5-4816-8ea9-9e5ff56c4d4f",
+    "timestamp_utc": "2026-04-23T09:23:11.935857+00:00",
+    "event_type": "file_upload",
+    "result": "success",
+    "message": "Sender uploaded package",
+    "client_id": "miche",
+    "role": "sender",
+    "ip": null,
+    "auth_method": null,
+    "file_id": "46b338cf-d7d7-4b98-b746-a482ae063e20",
+    "failure_reason": null,
+    "access_count_after": null
+  },
+  {
+    "event_id": "85c0c570-cd78-432c-bc87-90b8a2d02452",
+    "timestamp_utc": "2026-04-23T09:23:27.329946+00:00",
+    "event_type": "file_upload",
+    "result": "success",
+    "message": "Sender uploaded package",
+    "client_id": "miche",
+    "role": "sender",
+    "ip": null,
+    "auth_method": null,
+    "file_id": "2ee1faae-041e-4d04-b838-b613a4b7c9ed",
+    "failure_reason": null,
+    "access_count_after": null
   }
 ]
