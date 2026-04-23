@@ -133,13 +133,3 @@ class Database:
         except Exception:
             self.schema.con.rollback()
             raise
-
-# SECTION TO TEST DATABASE INSERTIONS
-    # def run_tests(self):
-    #     self.insert_user("user1", "alice", "hashed_password1", "tag1")
-    #     self.insert_file("file1", "log1", "user1", "pdf", "2024-06-01T12:00:00Z", "2MB", "report.pdf")
-    #     self.insert_file_policy("policy1", "file1", "read-only", "2024-12-31T23:59:59Z")
-    #     self.insert_access_log("log1", "user1", "file1", 1, "2024-06-01T12:05:00Z")
-
-# if __name__ == "__main__":
-#     db = Database()

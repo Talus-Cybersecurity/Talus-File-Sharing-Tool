@@ -647,6 +647,29 @@ async def handle_upload_package(ws: WebSocketServerProtocol, data: Dict[str, Any
     write_log(entry)
     await send_json(ws, {"type": "upload_package_ack", "package_id": package_id})
 
+    # Push notification to receiver if they're connected
+    receiver_username = receiver_id.split('#')[0] if '#' in receiver_id else receiver_id
+    receiver_session = connected_clients.get(receiver_username)
+    if receiver_session:
+        transfer_obj = {
+            "id": package_id,
+            "sender": sender_id,
+            "initials": sender_id[:2].upper(),
+            "tag": "",
+            "time": "just now",
+            "status": "pending",
+            "verified": False,
+            "passwordRequired": bool(requirements.get("password")),
+            "passwordVerified": False,
+            "timeRestricted": False,
+            "withinAllowedWindow": True,
+            "files": [{"name": file_name or "transfer", "size": file_size or "unknown", "type": (file_type or "").split("/")[-1].upper() or "FILE"}],
+            "options": [],
+            "maxViews": requirements.get("max_views"),
+            "viewCount": 0
+        }
+        await send_json(receiver_session.websocket, {"type": "incoming_transfer", "transfer": transfer_obj})
+
 def validate_receiver_against_requirements(
     receiver_metadata: Dict[str, Any],
     requirements: Dict[str, Any],
