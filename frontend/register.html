@@ -91,7 +91,7 @@
 
 <script>
 // ── Set to false when the real server is running ──────────────────────
-const MOCK_MODE = true;
+const MOCK_MODE = false;
 const WS_URL    = 'wss://localhost:8765';
 
 let toastTimer;
@@ -157,8 +157,10 @@ async function doRegister() {
     tempWs.close();
 
     if (reply.type === 'create_account_ack') {
-      document.getElementById('register-screen').classList.add('hidden');
-      openVerifyScreen(username, email);
+      document.getElementById('register-form-body').style.display = 'none';
+      document.getElementById('register-success-body').style.display = '';
+      document.getElementById('register-success-msg').textContent =
+        `Welcome, ${username}! Your account has been created. You can now sign in.`;
       return;
     }
     errEl.textContent = reply.message || 'Registration failed — please try again.';

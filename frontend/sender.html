@@ -250,7 +250,7 @@
 
 <script>
 // ── Set to false when the real server is running ──────────────────────
-const MOCK_MODE = true;
+const MOCK_MODE = false;
 const WS_URL    = 'wss://localhost:8765';
 
 // ── Load user from sessionStorage or use mock ─────────────────────────
@@ -268,6 +268,49 @@ document.getElementById('profile-btn').textContent          = currentUser.initia
 document.getElementById('profile-display-name').textContent = currentUser.username;
 document.getElementById('profile-display-user').textContent = '@' + currentUser.username.toLowerCase().replace(/\s+/g,'');
 
+// ── Crypto helpers ────────────────────────────────────────────────────
+let _privateKey = null, _serverPublicKeyPem = null, _handshakePromise = null;
+
+function _pemToDer(pem) {
+  const b64 = pem.replace(/-----[^-]+-----/g, '').replace(/\s/g, '');
+  return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+}
+
+async function _encryptWithPublicKeyPem(pem, plaintext) {
+  const key = await crypto.subtle.importKey('spki', _pemToDer(pem), { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['encrypt']);
+  const encrypted = await crypto.subtle.encrypt({ name: 'RSA-OAEP' }, key, plaintext);
+  return btoa(String.fromCharCode(...new Uint8Array(encrypted)));
+}
+
+async function _aesGcmEncrypt(key, plaintext) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, plaintext);
+  const result = new Uint8Array(12 + encrypted.byteLength);
+  result.set(iv);
+  result.set(new Uint8Array(encrypted), 12);
+  return result;
+}
+
+async function _doHandshake() {
+  const pubKeyPem = sessionStorage.getItem('talus_public_key_pem');
+  const privKeyB64 = sessionStorage.getItem('talus_private_key');
+  if (!pubKeyPem || !privKeyB64) throw new Error('Missing crypto keys in session — please log in again.');
+
+  const privDer = Uint8Array.from(atob(privKeyB64), c => c.charCodeAt(0));
+  _privateKey = await crypto.subtle.importKey('pkcs8', privDer, { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['decrypt']);
+
+  wsSend({ type: 'register', client_id: currentUser.username, role: 'sender', public_key_pem: pubKeyPem });
+
+  const srvReply = await wsRequest({ type: 'get_server_public_key' }, 'server_public_key');
+  _serverPublicKeyPem = srvReply.public_key_pem;
+
+  const skReply = await wsRequest({ type: 'create_session_key', client_id: currentUser.username }, 'session_key_created');
+  const encKeyBytes = Uint8Array.from(atob(skReply.encrypted_session_key_b64), c => c.charCodeAt(0));
+  await crypto.subtle.decrypt({ name: 'RSA-OAEP' }, _privateKey, encKeyBytes);
+
+  _wsReady = true;
+}
+
 // ── WebSocket layer ───────────────────────────────────────────────────
 let _ws = null, _wsReady = false, _pendingResolvers = {}, _wsReconnectTimer = null;
 
@@ -276,8 +319,10 @@ function wsConnect() {
   if (_ws && (_ws.readyState === WebSocket.OPEN || _ws.readyState === WebSocket.CONNECTING)) return;
   _ws = new WebSocket(WS_URL);
   _ws.onopen = () => {
-    _wsReady = true;
-    if (currentUser) wsSend({ type: 'register', client_id: currentUser.username, role: 'sender' });
+    _handshakePromise = _doHandshake().catch(err => {
+      console.error('[TALUS] Handshake failed:', err);
+      toastMsg('⚠ Key exchange failed — try reloading.');
+    });
   };
   _ws.onmessage = (event) => {
     let msg; try { msg = JSON.parse(event.data); } catch { return; }
@@ -463,6 +508,7 @@ async function confirmSend() {
   const r  = recipients.find(r => r.id === id);
   closeModal('confirm-modal');
   if (!_wsReady) { toastMsg('⚠ Not connected to server.'); return; }
+
   const requirements = {};
   const toggles = document.querySelectorAll('.right-col .toggle input');
   const optionKeys = ['ip_filter','device_cert','track_views','time_of_day','limited_access','watermark','password'];
@@ -472,14 +518,61 @@ async function confirmSend() {
   const la = parseInt(document.getElementById('la-value').textContent);
   if (requirements.limited_access && !isNaN(la)) requirements.max_views = la;
   if (ipList.length) requirements.allowed_ips = ipList;
+  if (requirements.password && _savedPasswordHash) requirements.password_hash = _savedPasswordHash;
+
+  let encrypted_file_b64, encrypted_requirements_b64, encrypted_file_key_b64 = '';
+
+  if (MOCK_MODE) {
+    encrypted_file_b64 = btoa(JSON.stringify(attachedItems.map(i => ({ name: i.name, type: i.type }))));
+    encrypted_requirements_b64 = btoa(JSON.stringify(requirements));
+  } else {
+    try { await _handshakePromise; } catch { toastMsg('⚠ Key exchange failed.'); return; }
+
+    // Encrypt requirements with server's RSA public key
+    const reqBytes = new TextEncoder().encode(JSON.stringify(requirements));
+    encrypted_requirements_b64 = await _encryptWithPublicKeyPem(_serverPublicKeyPem, reqBytes);
+
+    // Read actual file content into a structured payload
+    const payload = await Promise.all(attachedItems.map(async item => {
+      if (item.type === 'text') {
+        return { name: item.name, type: 'text', content: item.fullText || item.name };
+      } else if (item.fileObj) {
+        const buf = await item.fileObj.arrayBuffer();
+        const bytes = new Uint8Array(buf);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+        return { name: item.name, type: 'file', content: btoa(binary), mime: item.fileObj.type || 'application/octet-stream' };
+      }
+      return { name: item.name, type: item.type };
+    }));
+
+    // Encrypt payload with a random AES-GCM key
+    const fileAesKey = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
+    const fileData = new TextEncoder().encode(JSON.stringify(payload));
+    const encFile = await _aesGcmEncrypt(fileAesKey, fileData);
+    encrypted_file_b64 = btoa(String.fromCharCode(...encFile));
+
+    // Encrypt the AES file key with the receiver's RSA public key
+    const peerReply = await wsRequest(
+      { type: 'request_peer_public_key', peer_id: r.username },
+      'peer_public_key'
+    );
+    const fileKeyRaw = await crypto.subtle.exportKey('raw', fileAesKey);
+    encrypted_file_key_b64 = await _encryptWithPublicKeyPem(peerReply.public_key_pem, fileKeyRaw);
+  }
+
   try {
     const reply = await wsRequest(
       {
         type: 'upload_package',
         sender_id: currentUser.username,
         receiver_id: r.username + '#' + r.tag,
-        encrypted_file_b64: btoa(JSON.stringify(attachedItems.map(i => ({ name: i.name, type: i.type })))),
-        encrypted_requirements_b64: btoa(JSON.stringify(requirements))
+        encrypted_file_b64,
+        encrypted_requirements_b64,
+        encrypted_file_key_b64,
+        file_name: attachedItems[0]?.name || 'transfer',
+        file_type: attachedItems[0]?.fileObj?.type || 'application/octet-stream',
+        file_size: String(attachedItems.reduce((s, i) => s + (i.fileObj?.size || 0), 0)) + ' bytes'
       },
       'upload_package_ack',
       12000
@@ -553,7 +646,7 @@ function renderIPList() {
 }
 function saveIP() { closeModal('ip-modal'); toastMsg(ipList.length ? `✓ ${ipList.length} IP rule(s) saved` : 'IP list cleared'); }
 
-let currentPinTab='password', pinValue='';
+let currentPinTab='password', pinValue='', _savedPasswordHash = null;
 function switchPinTab(tab) {
   currentPinTab=tab;
   document.querySelectorAll('.pin-tab').forEach((b,i)=>b.classList.toggle('active',(i===0&&tab==='password')||(i===1&&tab==='pin')));
@@ -573,10 +666,14 @@ function savePinOrPassword() {
     const pw=document.getElementById('pw-input').value, conf=document.getElementById('pw-confirm').value;
     if (!pw) { toastMsg('Enter a password first.'); return; }
     if (pw!==conf) { toastMsg('Passwords do not match.'); return; }
+    crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw))
+      .then(buf => { _savedPasswordHash = Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join(''); });
     document.getElementById('pw-saved').style.display='block';
     toastMsg('✓ Password saved'); setTimeout(()=>closeModal('pin-modal'),800);
   } else {
     if (pinValue.length<4) { toastMsg('PIN must be at least 4 digits.'); return; }
+    crypto.subtle.digest('SHA-256', new TextEncoder().encode(pinValue))
+      .then(buf => { _savedPasswordHash = Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join(''); });
     document.getElementById('pin-saved').style.display='block';
     toastMsg('✓ PIN saved'); setTimeout(()=>closeModal('pin-modal'),800);
   }

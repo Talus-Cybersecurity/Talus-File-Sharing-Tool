@@ -36,7 +36,7 @@
 
 <script>
 // ── Set to false when the real server is running ──────────────────────
-const MOCK_MODE = true;
+const MOCK_MODE = false;
 const WS_URL    = 'wss://localhost:8765';
 
 let toastTimer;
@@ -76,7 +76,7 @@ async function _unwrapPrivateKey(password, pbkdf2SaltB64, aesIvB64, encryptedPri
 }
 
 // Store user in sessionStorage so sender/receiver pages can read it
-async function _afterLogin(username, userId, privateKey) {
+async function _afterLogin(username, userId, privateKey, publicKeyPem) {
   const exportedKey = await crypto.subtle.exportKey('pkcs8', privateKey);
   const keyB64 = btoa(String.fromCharCode(...new Uint8Array(exportedKey)));
   sessionStorage.setItem('talus_user', JSON.stringify({
@@ -85,6 +85,7 @@ async function _afterLogin(username, userId, privateKey) {
     initials: username.slice(0, 2).toUpperCase()
   }));
   sessionStorage.setItem('talus_private_key', keyB64);
+  if (publicKeyPem) sessionStorage.setItem('talus_public_key_pem', publicKeyPem);
   window.location.href = 'sender.html';
 }
 
@@ -136,7 +137,7 @@ async function doLogin() {
         reply.aes_iv,
         reply.encrypted_private_key
       );
-      await _afterLogin(username, reply.user_id, privateKey);
+      await _afterLogin(username, reply.user_id, privateKey, reply.public_key_pem);
       return;
     }
     errEl.textContent = reply.message || 'Invalid username or password.';
