@@ -17,7 +17,7 @@ import secrets
 import ssl
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
-from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 import psycopg2
 from loghelper import build_log_entry, log_sender_event, write_log, handle_get_logs
 from logformatting import get_readable_logs
@@ -54,9 +54,14 @@ class FilePackage:
     receiver_id: str
     encrypted_file_b64: str
     encrypted_requirements_b64: Optional[str] = None
+    encrypted_file_key_b64: Optional[str] = None
     parsed_requirements: Optional[Dict[str, Any]] = None
-    uploaded_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    file_name: Optional[str] = None
+    file_type: Optional[str] = None
+    file_size: Optional[str] = None
+    uploaded_at: Any = field(default_factory=lambda: datetime.now(timezone.utc))
     delivered: bool = False
+    view_count: int = 0
 
 
 connected_clients: Dict[str, ClientSession] = {}
@@ -151,12 +156,17 @@ def rsa_decrypt_with_server_private_key(ciphertext: bytes) -> bytes:
 # ws = who to respond to
 # data = data sent from client 
 db = Database()
-async def handle_create_account(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None: 
-    user_id = str(uuid.uuid4())
-    username = data["username"]
-    email = data["email"]
-    password = data["password"]
-    tag_id = data["tag_id"]
+async def handle_create_account(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
+    user_id       = str(uuid.uuid4())
+    username      = data["username"]
+    email         = data["email"]
+    password      = data["password_hash"]   # client sends SHA-256 hash; server bcrypts it
+    tag_id        = data["tag_id"]
+    public_key_spki  = data.get("public_key_spki")
+    public_key_pem   = spki_b64_to_pem(public_key_spki) if public_key_spki else None
+    encrypted_private_key = data.get("encrypted_private_key")
+    pbkdf2_salt      = data.get("pbkdf2_salt")
+    aes_iv           = data.get("aes_iv")
 
     # Check username
     if not username or len(username) < 3 or len(username) > 36:
@@ -164,22 +174,10 @@ async def handle_create_account(ws: WebSocketServerProtocol, data: Dict[str, Any
             "message": "Username must be between 3 and 36 characters."})
         return
 
-    # Check passwords
-    if len(password) < 8:
+    # password is a SHA-256 hex hash; plaintext validation happens client-side
+    if not password or len(password) != 64 or not re.fullmatch(r"[0-9a-f]{64}", password):
         await send_json(ws, {"type": "error",
-            "message": "Password must be at least 8 characters."})
-        return
-    if not re.search(r"[A-Za-z]", password):
-        await send_json(ws, {"type": "error",
-            "message": "Password must contain at least one letter."})
-        return
-    if not re.search(r"[0-9]", password):
-        await send_json(ws, {"type": "error",
-            "message": "Password must contain at least one number."})
-        return
-    if not re.search(r"[^A-Za-z0-9]", password):
-        await send_json(ws, {"type": "error",
-            "message": "Password must contain at least one symbol."})
+            "message": "Invalid password format."})
         return
         
     # If password fails to hash, this function prevents the database from 
@@ -200,9 +198,11 @@ async def handle_create_account(ws: WebSocketServerProtocol, data: Dict[str, Any
             "message": "Password hashing failed"
         })
         return
-    # Insert user's username, password, user_id, and tag_id
     try:
-        db.insert_user(user_id, username, email, new_hash_pw, tag_id)
+        db.insert_user(user_id, username, email, new_hash_pw, tag_id,
+                       public_key_pem, encrypted_private_key, pbkdf2_salt, aes_iv)
+        if public_key_pem:
+            public_keys[user_id] = public_key_pem
     except psycopg2.IntegrityError:
         entry = build_log_entry(
             event_type="register_failure",
@@ -237,7 +237,7 @@ async def handle_create_account(ws: WebSocketServerProtocol, data: Dict[str, Any
 
 async def handle_login(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None: 
     username = data["username"]
-    password = data["password"]
+    password = data["password_hash"]   # client sends SHA-256 hash; server verifies with bcrypt
     user_matches = False
 
     # Check username if it matches one in the database
@@ -283,7 +283,7 @@ async def handle_login(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> Non
         write_log(entry)
         return
     
-    try: 
+    try:
         if user_matches and pw_matches is True:
             entry = build_log_entry(
                 event_type="login_success",
@@ -293,12 +293,21 @@ async def handle_login(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> Non
                 role="user"
             )
             write_log(entry)
+
+            user_public_key = db.get_public_key(username)
+            encrypted_private_key, pbkdf2_salt, aes_iv = db.get_key_bundle(username)
+            if user_public_key:
+                public_keys[user_id] = user_public_key
+
             await send_json(ws, {
                 "type": "login_ack",
                 "username": username,
-                "user_id": user_id
+                "user_id": user_id,
+                "public_key_pem": user_public_key,
+                "encrypted_private_key": encrypted_private_key,
+                "pbkdf2_salt": pbkdf2_salt,
+                "aes_iv": aes_iv
             })
-            print("Login did an amazing job")
         else:
             await send_json(ws, {
                 "type": "error",
@@ -314,13 +323,19 @@ async def handle_login(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> Non
         
 
 def generate_symmetric_key() -> bytes:
-    return Fernet.generate_key()
+    return os.urandom(32)
 
-def fernet_encrypt(key: bytes, plaintext: bytes) -> bytes:
-    return Fernet(key).encrypt(plaintext)
+def aes_gcm_encrypt(key: bytes, plaintext: bytes) -> bytes:
+    iv = os.urandom(12)
+    return iv + AESGCM(key).encrypt(iv, plaintext, None)
 
-def fernet_decrypt(key: bytes, ciphertext: bytes) -> bytes:
-    return Fernet(key).decrypt(ciphertext)
+def aes_gcm_decrypt(key: bytes, data: bytes) -> bytes:
+    return AESGCM(key).decrypt(data[:12], data[12:], None)
+
+def spki_b64_to_pem(spki_b64: str) -> str:
+    der = base64.b64decode(spki_b64)
+    pem_body = base64.encodebytes(der).decode("utf-8")
+    return f"-----BEGIN PUBLIC KEY-----\n{pem_body}-----END PUBLIC KEY-----\n"
 
 
 async def send_json(ws: WebSocketServerProtocol, message: Dict[str, Any]) -> None:
@@ -406,7 +421,7 @@ async def handle_publish_public_key(ws: WebSocketServerProtocol, data: Dict[str,
 
 async def handle_request_peer_public_key(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
     peer_id = data["peer_id"]
-    pem = public_keys.get(peer_id)
+    pem = public_keys.get(peer_id) or db.get_public_key(peer_id)
 
     if not pem:
         await send_json(ws, {
@@ -415,6 +430,7 @@ async def handle_request_peer_public_key(ws: WebSocketServerProtocol, data: Dict
         })
         return
 
+    public_keys[peer_id] = pem  # cache it for future requests
     await send_json(ws, {
         "type": "peer_public_key",
         "peer_id": peer_id,
@@ -448,10 +464,67 @@ async def handle_create_session_key(ws: WebSocketServerProtocol, data: Dict[str,
         "encrypted_session_key_b64": encode_b64(encrypted_key)
     })
 
+async def handle_get_incoming_transfers(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
+    client_id = data.get("client_id", "")
+    transfers = []
+
+    for pkg in packages.values():
+        pkg_receiver = pkg.receiver_id.split('#')[0] if '#' in pkg.receiver_id else pkg.receiver_id
+        if pkg_receiver != client_id:
+            continue
+
+        try:
+            uploaded = pkg.uploaded_at
+            if isinstance(uploaded, str):
+                uploaded = datetime.fromisoformat(uploaded)
+            if uploaded.tzinfo is None:
+                uploaded = uploaded.replace(tzinfo=timezone.utc)
+            delta = datetime.now(timezone.utc) - uploaded
+            minutes = int(delta.total_seconds() / 60)
+            if minutes < 1:
+                time_str = "just now"
+            elif minutes < 60:
+                time_str = f"{minutes} min ago"
+            else:
+                time_str = f"{minutes // 60} hr ago"
+        except Exception:
+            time_str = "recently"
+
+        requirements = pkg.parsed_requirements or {}
+        max_views = requirements.get("max_views")
+        view_count = pkg.view_count
+        if pkg.delivered:
+            status = "declined"
+        elif max_views is not None:
+            try:
+                status = "expired" if view_count >= int(max_views) else "pending"
+            except (TypeError, ValueError):
+                status = "pending"
+        else:
+            status = "pending"
+        transfers.append({
+            "id": pkg.package_id,
+            "sender": pkg.sender_id,
+            "initials": pkg.sender_id[:2].upper(),
+            "tag": "",
+            "time": time_str,
+            "status": status,
+            "verified": False,
+            "passwordRequired": bool(requirements.get("password")),
+            "passwordVerified": False,
+            "timeRestricted": False,
+            "withinAllowedWindow": True,
+            "files": [{"name": pkg.file_name or "transfer", "size": pkg.file_size or "unknown", "type": (pkg.file_type or "").split("/")[-1].upper() or "FILE"}],
+            "options": [],
+            "maxViews": max_views,
+            "viewCount": view_count
+        })
+
+    await send_json(ws, {"type": "incoming_transfers_list", "transfers": transfers})
+
+
 # TALUS-195 - Identify if incoming message is Sender File post, store files, and database requirements
 def is_sender_file_post(data: dict) -> tuple[bool, str | None]:
-    if data.get("type") != "upload_package":
-        return False, f"type is '{data.get('type')}', expected 'upload_package'"
     for field in ("encrypted_file_b64", "encrypted_requirements_b64"):
         value = data.get(field)
         if not isinstance(value, str) or not value.strip():
@@ -520,25 +593,34 @@ async def handle_upload_package(ws: WebSocketServerProtocol, data: Dict[str, Any
         receiver_id=receiver_id,
         encrypted_file_b64=encrypted_file_b64,
         encrypted_requirements_b64=encrypted_requirements_b64,
+        encrypted_file_key_b64=data.get("encrypted_file_key_b64"),
         parsed_requirements=requirements,
+        file_name=file_name,
+        file_type=file_type,
+        file_size=file_size,
         uploaded_at=upload_time
     )
  
-    db.insert_file(
-        file_id=package_id,
-        log_id=None,
-        owner_id=sender_id,
-        file_type=file_type,
-        upload_timestamp=upload_time,
-        file_size=file_size,
-        file_name=file_name,
-        file_path=encrypted_file_b64
-    )
- 
+    sender_user_id = db.get_user_id(sender_id) or sender_id
+    try:
+        db.insert_file(
+            file_id=package_id,
+            log_id=None,
+            owner_id=sender_user_id,
+            file_type=file_type,
+            upload_timestamp=upload_time,
+            file_size=file_size,
+            file_name=file_name,
+            file_path=encrypted_file_b64
+        )
+    except Exception:
+        logging.exception("insert_file failed for package_id=%s", package_id)
+
+    receiver_user_id = db.get_user_id(receiver_id.split('#')[0]) or receiver_id
     try:
         db.insert_file_policy(
             policy_id=policy_id,
-            receiver_id=receiver_id,
+            receiver_id=receiver_user_id,
             file_id=package_id,
             ip_address=requirements.get("ip_address"),
             access_count=requirements.get("access_count"),
@@ -567,7 +649,7 @@ async def handle_upload_package(ws: WebSocketServerProtocol, data: Dict[str, Any
 
 def validate_receiver_against_requirements(
     receiver_metadata: Dict[str, Any],
-    requirements: Dict[str, Any]
+    requirements: Dict[str, Any],
     ws_ip: str = None
 ) -> tuple[bool, str | None]:
     for field_name, expected_value in requirements.items():
@@ -580,11 +662,18 @@ def validate_receiver_against_requirements(
                 if not (min_hour <= server_hour <= max_hour):
                     return False, f"Access denied: outside allowed time window ({min_hour}:00–{max_hour}:00 UTC, current hour is {server_hour}:00 UTC)"
             continue
+        if field_name == "password" and expected_value:
+            required_hash = requirements.get("password_hash")
+            provided_hash = receiver_metadata.get("password_hash")
+            if not provided_hash or provided_hash != required_hash:
+                return False, "incorrect_password"
+            continue
+        if field_name == "password_hash":
+            continue
+    return True, None
 
 # TALUS-194: Detect if incoming is file access request
 def is_file_access_request(data: dict) -> tuple[bool, str | None]:
-    if data.get("type") != "request_file_access":
-        return False, f"type is '{data.get('type')}', expected 'request_file_access'"
     for field in ("receiver_id", "package_id", "encrypted_receiver_metadata_b64"):
         value = data.get(field)
         if not isinstance(value, str) or not value.strip():
@@ -592,10 +681,23 @@ def is_file_access_request(data: dict) -> tuple[bool, str | None]:
     package = packages.get(data["package_id"])
     if package is None:
         return False, f"Unknown package_id: '{data['package_id']}'"
-    if package.receiver_id != data["receiver_id"]:
+    pkg_receiver = package.receiver_id.split('#')[0] if '#' in package.receiver_id else package.receiver_id
+    if pkg_receiver != data["receiver_id"]:
         return False, f"receiver_id '{data['receiver_id']}' is not authorized for this package"
     return True, None
     
+async def handle_log_transfer_view(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
+    await send_json(ws, {"type": "log_transfer_view_ack"})
+
+
+async def handle_transfer_response(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
+    package_id = data.get("transfer_id")
+    decision   = data.get("decision")
+    if package_id and package_id in packages and decision == "declined":
+        packages[package_id].delivered = True
+    await send_json(ws, {"type": "transfer_response_ack"})
+
+
 async def handle_request_file_access(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
     valid, reason = is_file_access_request(data)
     if not valid:
@@ -615,29 +717,54 @@ async def handle_request_file_access(ws: WebSocketServerProtocol, data: Dict[str
  
     try:
         receiver_metadata = json.loads(
-            fernet_decrypt(session_key, decode_b64(data["encrypted_receiver_metadata_b64"])).decode("utf-8")
+            aes_gcm_decrypt(session_key, decode_b64(data["encrypted_receiver_metadata_b64"])).decode("utf-8")
         )
     except Exception:
         logging.exception("Failed to decrypt receiver metadata")
         await send_json(ws, {"type": "error", "message": "Could not decrypt receiver metadata."})
         return
  
+    requirements = package.parsed_requirements or {}
+    max_views = requirements.get("max_views")
+    if max_views is not None:
+        try:
+            if package.view_count >= int(max_views):
+                logging.info("Access denied for package_id=%s: max_views (%s) reached", package_id, max_views)
+                error_payload = {"status": "denied", "failed_field": "max_views", "message": "Access limit reached."}
+                await send_json(ws, {
+                    "type": "authorization_denied",
+                    "encrypted_error_b64": encode_b64(aes_gcm_encrypt(session_key, json.dumps(error_payload).encode()))
+                })
+                return
+        except (TypeError, ValueError):
+            pass
+
     allowed, failed_field = validate_receiver_against_requirements(
         receiver_metadata,
-        package.parsed_requirements or {}
+        requirements
     )
  
     access_status = "granted" if allowed else f"denied:{failed_field}"
  
+    log_detail = json.dumps({
+        "sender_id":    package.sender_id,
+        "receiver_id":  receiver_id,
+        "file_name":    package.file_name,
+        "file_size":    package.file_size,
+        "file_type":    package.file_type,
+        "send_options": package.parsed_requirements or {},
+        "access_status": access_status,
+        "timestamp":    datetime.now(timezone.utc).isoformat()
+    })
     try:
         db.insert_access_log(
             log_id=str(uuid.uuid4()),
-            user_id=receiver_id,
+            user_id=db.get_user_id(receiver_id) or receiver_id,
             file_id=package_id,
             access_attempts=1,
             timestamps=datetime.now(timezone.utc),
             ip_address=receiver_metadata.get("ip_address"),
-            access_status=access_status
+            access_status=log_detail
         )
     except Exception:
         logging.exception("insert_access_log failed for package_id=%s", package_id)
@@ -651,16 +778,17 @@ async def handle_request_file_access(ws: WebSocketServerProtocol, data: Dict[str
         await send_json(ws, {
             "type": "authorized_file_delivery",
             "package_id": package_id,
-            "encrypted_file_b64": package.encrypted_file_b64
+            "encrypted_file_b64": package.encrypted_file_b64,
+            "encrypted_file_key_b64": package.encrypted_file_key_b64
         })
-        package.delivered = True
+        package.view_count += 1
     else:
         error_payload = {
             "status": "denied",
             "failed_field": failed_field,
             "message": "Receiver metadata did not satisfy sender requirements."
         }
-        encrypted_error = fernet_encrypt(session_key, json.dumps(error_payload).encode("utf-8"))
+        encrypted_error = aes_gcm_encrypt(session_key, json.dumps(error_payload).encode("utf-8"))
         await send_json(ws, {
             "type": "authorization_denied",
             "encrypted_error_b64": encode_b64(encrypted_error)
@@ -702,8 +830,14 @@ async def handle_message(ws: WebSocketServerProtocol, raw_message: str) -> None:
             await handle_request_peer_public_key(ws, data)
         elif msg_type == "create_session_key":
             await handle_create_session_key(ws, data)
+        elif msg_type == "get_incoming_transfers":
+            await handle_get_incoming_transfers(ws, data)
         elif msg_type == "upload_package":
             await handle_upload_package(ws, data)
+        elif msg_type == "log_transfer_view":
+            await handle_log_transfer_view(ws, data)
+        elif msg_type == "transfer_response":
+            await handle_transfer_response(ws, data)
         elif msg_type == "request_file_access":
             await handle_request_file_access(ws, data)
         elif msg_type == "create_account":
