@@ -885,18 +885,12 @@ async function doRegister() {
     tempWs.close();
 
     // ── Success — move to email verification screen ───────────────────
-    /*
     if (reply.type === 'create_account_ack') {
       document.getElementById('register-screen').classList.add('hidden');
       openVerifyScreen(username, email);
       return;
-    }*/
-
-    if (reply.type === 'create_account_ack') {
-      errEl.style.color = 'green';                                                                     
-      errEl.textContent = 'Account created! User ID: ' + reply.user_id;                                
-      return;                                                          
-      }        
+    }
+   
     // ── Server returned explicit failure ──────────────────────────────
     errEl.textContent = reply.message || 'Registration failed — please try again.';
 
