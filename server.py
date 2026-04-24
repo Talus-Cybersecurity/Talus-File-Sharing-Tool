@@ -5,6 +5,8 @@ import base64
 import json
 import websockets
 from websockets.server import WebSocketServerProtocol
+from email_service import generate_verification_code, send_verification_email
+from datetime import timedelta
 
 import uuid
 from dataclasses import dataclass, field
@@ -219,6 +221,17 @@ async def handle_create_account(ws: WebSocketServerProtocol, data: Dict[str, Any
             "message": "Username or email is already taken."
         })
         return
+        
+    # Generate verification code
+    code       = generate_verification_code()
+    token_id   = str(uuid.uuid4())
+    expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=10)
+    db.insert_verification_token(token_id, user_id, code, expires_at)
+ 
+    # Send the email
+    sent = send_verification_email(email, code)
+    if not sent:
+        logging.warning("Failed to send verification email to %s", email)
     
     entry = build_log_entry(
         event_type="register_success",
@@ -234,6 +247,31 @@ async def handle_create_account(ws: WebSocketServerProtocol, data: Dict[str, Any
         "user_id": user_id
     })
 
+async def handle_verify_email(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
+    # Verifies the user's email using the 6 digit code they received.
+    user_id = (data.get("user_id") or "").strip()
+    code    = (data.get("code") or "").strip()
+ 
+    if not user_id or not code:
+        await send_json(ws, {"type": "error",
+            "message": "user_id and code are required."})
+        return
+ 
+    row = db.get_verification_token(user_id, code)
+    if row is None:
+        await send_json(ws, {"type": "error",
+            "message": "Invalid or expired verification code."})
+        return
+ 
+    token_id = row[0]
+    db.mark_token_used(token_id)
+    db.verify_user(user_id)
+ 
+    logging.info("Email verified for user_id=%s", user_id)
+    await send_json(ws, {
+        "type": "verify_email_ack",
+        "message": "Email verified. You can now log in."
+    })
 
 async def handle_login(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None: 
     username = data["username"]
@@ -260,6 +298,13 @@ async def handle_login(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> Non
         return
 
     user_id = db.get_user_id(username)  
+    
+    # Check if user is verified
+    if not db.is_user_verified(username):
+        await send_json(ws, {"type": "error",
+            "message": "Please verify your email before logging in."})
+        return
+        
     # Get database password using the username
     get_db_hash = db.get_password(username)
 
@@ -676,7 +721,8 @@ def validate_receiver_against_requirements(
     ws_ip: str = None
 ) -> tuple[bool, str | None]:
     for field_name, expected_value in requirements.items():
-        # TALUS-231: Verify time of day in hour range
+ 
+        # TALUS-231 time-of-day: use server clock
         if field_name == "hour_range":
             server_hour = datetime.now(timezone.utc).hour
             if isinstance(expected_value, dict):
@@ -693,6 +739,29 @@ def validate_receiver_against_requirements(
             continue
         if field_name == "password_hash":
             continue
+ 
+        # TALUS-232 IP address: use WebSocket connection IP
+        if field_name == "ip_address":
+            if expected_value is not None and ws_ip is not None:
+                if ws_ip != expected_value:
+                    return False, "Access denied: your IP address is not permitted"
+            continue
+ 
+        # All other fields
+        if field_name not in receiver_metadata:
+            return False, f"Access denied: missing required field '{field_name}'"
+ 
+        actual_value = receiver_metadata[field_name]
+ 
+        if isinstance(expected_value, dict):
+            if "min" in expected_value and actual_value < expected_value["min"]:
+                return False, f"Access denied: '{field_name}' is below the minimum allowed value"
+            if "max" in expected_value and actual_value > expected_value["max"]:
+                return False, f"Access denied: '{field_name}' exceeds the maximum allowed value"
+        else:
+            if actual_value != expected_value:
+                return False, f"Access denied: '{field_name}' does not match the required value"
+ 
     return True, None
 
 # TALUS-194: Detect if incoming is file access request
@@ -782,6 +851,33 @@ async def handle_request_file_access(ws: WebSocketServerProtocol, data: Dict[str
     allowed, failed_field = validate_receiver_against_requirements(
         receiver_metadata,
         requirements
+        
+    # TALUS-233 Check access count from AccessLog
+    requirements = package.parsed_requirements or {}
+    if "access_count" in requirements and requirements["access_count"] is not None:
+        current_count = db.get_access_count(package_id)
+        if current_count >= requirements["access_count"]:
+            await send_json(ws, {
+                "type": "authorization_denied",
+                "encrypted_error_b64": encode_b64(fernet_encrypt(
+                    session_key,
+                    json.dumps({
+                        "status": "denied",
+                        "failed_field": "access_count",
+                        "message": f"Access denied: file has reached its maximum view limit ({requirements['access_count']} views)"
+                    }).encode("utf-8")
+                ))
+            })
+            return
+            
+    # TALUS-232 - Get IP from websocket
+    ws_ip = ws.remote_address[0] if ws.remote_address else None
+
+    # TALUS-231, 232, 234
+    allowed, failed_field = validate_receiver_against_requirements(
+        receiver_metadata,
+        requirements,
+        ws_ip=ws_ip
     )
  
     access_status = "granted" if allowed else f"denied:{failed_field}"
@@ -805,13 +901,15 @@ async def handle_request_file_access(ws: WebSocketServerProtocol, data: Dict[str
             timestamps=datetime.now(timezone.utc),
             ip_address=receiver_metadata.get("ip_address"),
             access_status=log_detail
+            ip_address=ws_ip,
+            access_status=access_status
         )
     except Exception:
         logging.exception("insert_access_log failed for package_id=%s", package_id)
  
     logging.info(
-        "Access request package_id=%s receiver_id=%s allowed=%s failed_field=%s",
-        package_id, receiver_id, allowed, failed_field
+        "Access request package_id=%s receiver_id=%s allowed=%s",
+        package_id, receiver_id, allowed
     )
  
     if allowed:
@@ -823,17 +921,18 @@ async def handle_request_file_access(ws: WebSocketServerProtocol, data: Dict[str
         })
         package.view_count += 1
     else:
+        # TALUS-234 — human-readable denial reason
         error_payload = {
             "status": "denied",
             "failed_field": failed_field,
-            "message": "Receiver metadata did not satisfy sender requirements."
+            "message": failed_field  # already a human-readable string from validate_receiver_against_requirements
         }
         encrypted_error = aes_gcm_encrypt(session_key, json.dumps(error_payload).encode("utf-8"))
         await send_json(ws, {
             "type": "authorization_denied",
             "encrypted_error_b64": encode_b64(encrypted_error)
         })
-
+ 
 async def client_handler(ws: WebSocketServerProtocol) -> None:
     logging.info("Client connected")
 
@@ -854,7 +953,6 @@ async def client_handler(ws: WebSocketServerProtocol) -> None:
         for client_id in disconnected_ids:
             connected_clients.pop(client_id, None)
             logging.info("Cleaned session for client_id=%s", client_id)
-
 
 async def handle_message(ws: WebSocketServerProtocol, raw_message: str) -> None:
     try:
@@ -886,6 +984,8 @@ async def handle_message(ws: WebSocketServerProtocol, raw_message: str) -> None:
             await handle_create_account(ws, data)
         elif msg_type == "login":
             await handle_login(ws, data)
+        elif msg_type == "verify_email":
+            await handle_verify_email(ws, data)
         elif msg_type == "session_clear":
             pass
         elif msg_type == "get_logs":
