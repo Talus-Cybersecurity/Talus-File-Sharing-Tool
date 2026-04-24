@@ -540,7 +540,9 @@ async function confirmSend() {
         const buf = await item.fileObj.arrayBuffer();
         const bytes = new Uint8Array(buf);
         let binary = '';
-        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+        const chunk = 8192;
+        for (let i = 0; i < bytes.length; i += chunk)
+          binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
         return { name: item.name, type: 'file', content: btoa(binary), mime: item.fileObj.type || 'application/octet-stream' };
       }
       return { name: item.name, type: item.type };
@@ -550,7 +552,12 @@ async function confirmSend() {
     const fileAesKey = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
     const fileData = new TextEncoder().encode(JSON.stringify(payload));
     const encFile = await _aesGcmEncrypt(fileAesKey, fileData);
-    encrypted_file_b64 = btoa(String.fromCharCode(...encFile));
+  let encBinary = '';
+  const encChunk = 8192;                         
+  for (let i = 0; i < encFile.length; i += encChunk)                       
+    encBinary += String.fromCharCode(...encFile.subarray(i, i + encChunk));
+  encrypted_file_b64 = btoa(encBinary);   
+
 
     // Encrypt the AES file key with the receiver's RSA public key
     const peerReply = await wsRequest(
