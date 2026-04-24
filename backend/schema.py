@@ -8,7 +8,7 @@ class Schema:
     def __init__(self): 
         self.con = psycopg2.connect(
             host=os.getenv("DB_HOST"),
-            database=os.getenv("talus_db"),
+            database=os.getenv("DB_NAME"),
             user=os.getenv("DB_USER"),
             password=os.getenv("DB_PASSWORD"),
             port=os.getenv("DB_PORT", "5432")
@@ -22,10 +22,22 @@ class Schema:
                 username TEXT NOT NULL UNIQUE,
                 email TEXT NOT NULL UNIQUE,
                 password TEXT NOT NULL,
+                tag_id TEXT,
+                public_key TEXT,
+                encrypted_private_key TEXT,
+                pbkdf2_salt TEXT,
+                aes_iv TEXT
                 tag_id TEXT
                 is_verified BOOLEAN NOT NULL DEFAULT FALSE
             )
-        """)  
+        """)
+
+    def migrate_user_table(self):
+        # Adds key columns to existing User tables that predate this migration
+        for col in ("public_key", "encrypted_private_key", "pbkdf2_salt", "aes_iv"):
+            self.cur.execute(f"""
+                ALTER TABLE "User" ADD COLUMN IF NOT EXISTS {col} TEXT
+            """)  
 
     def create_accesslog_table(self):
         self.cur.execute("""
@@ -100,6 +112,7 @@ class Schema:
 
     def run(self):
         self.create_user_table()
+        self.migrate_user_table()
         self.create_accesslog_table()
         self.create_file_table()
         self.create_filepolicy_table()

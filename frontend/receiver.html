@@ -37,7 +37,6 @@
           <div class="receive-status-dot" id="receive-dot"></div>
           <span id="receive-status-text">Listening for incoming transfers…</span>
           <span class="receive-status-badge" id="receive-badge">0 pending</span>
-          <button class="receive-toggle-btn" id="receive-toggle-btn" onclick="toggleReceive()">Stop</button>
         </div>
         <div class="receive-cols">
           <div class="receive-left">
@@ -86,11 +85,23 @@
   </div>
 </div>
 
+<!-- Delete confirmation modal -->
+<div class="modal-overlay" id="delete-confirm-modal">
+  <div class="modal" style="width:380px">
+    <div class="modal-title">🗑 Discard Transfer?</div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;">This will permanently delete the transfer from the server. This action cannot be undone.</p>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeDeleteModal()">Cancel</button>
+      <button class="btn-decline" onclick="confirmDelete()">Discard</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
 // ── Set to false when the real server is running ──────────────────────
-const MOCK_MODE = true;
+const MOCK_MODE = false;
 const WS_URL    = 'wss://localhost:8765';
 
 // ── Mock transfer data — edit this to test different scenarios ─────────
@@ -170,6 +181,50 @@ document.getElementById('profile-btn').textContent          = currentUser.initia
 document.getElementById('profile-display-name').textContent = currentUser.username;
 document.getElementById('profile-display-user').textContent = '@' + currentUser.username.toLowerCase().replace(/\s+/g,'');
 
+// ── Crypto helpers ────────────────────────────────────────────────────
+let _privateKey = null, _sessionKey = null, _handshakePromise = null;
+
+function _pemToDer(pem) {
+  const b64 = pem.replace(/-----[^-]+-----/g, '').replace(/\s/g, '');
+  return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+}
+
+async function _aesGcmEncrypt(key, plaintext) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, plaintext);
+  const result = new Uint8Array(12 + encrypted.byteLength);
+  result.set(iv);
+  result.set(new Uint8Array(encrypted), 12);
+  return result;
+}
+
+async function _aesGcmDecrypt(key, ivPlusCiphertext) {
+  const iv = ivPlusCiphertext.slice(0, 12);
+  const ct = ivPlusCiphertext.slice(12);
+  const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+  return new Uint8Array(decrypted);
+}
+
+async function _doHandshake() {
+  const pubKeyPem = sessionStorage.getItem('talus_public_key_pem');
+  const privKeyB64 = sessionStorage.getItem('talus_private_key');
+  if (!pubKeyPem || !privKeyB64) throw new Error('Missing crypto keys in session — please log in again.');
+
+  const privDer = Uint8Array.from(atob(privKeyB64), c => c.charCodeAt(0));
+  _privateKey = await crypto.subtle.importKey('pkcs8', privDer, { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['decrypt']);
+
+  wsSend({ type: 'register', client_id: currentUser.username, role: 'receiver', public_key_pem: pubKeyPem });
+
+  await wsRequest({ type: 'get_server_public_key' }, 'server_public_key');
+
+  const skReply = await wsRequest({ type: 'create_session_key', client_id: currentUser.username }, 'session_key_created');
+  const encKeyBytes = Uint8Array.from(atob(skReply.encrypted_session_key_b64), c => c.charCodeAt(0));
+  const rawKey = await crypto.subtle.decrypt({ name: 'RSA-OAEP' }, _privateKey, encKeyBytes);
+  _sessionKey = await crypto.subtle.importKey('raw', rawKey, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+
+  _wsReady = true;
+}
+
 // ── WebSocket layer ───────────────────────────────────────────────────
 let _ws = null, _wsReady = false, _pendingResolvers = {}, _wsReconnectTimer = null;
 
@@ -178,8 +233,10 @@ function wsConnect() {
   if (_ws && (_ws.readyState === WebSocket.OPEN || _ws.readyState === WebSocket.CONNECTING)) return;
   _ws = new WebSocket(WS_URL);
   _ws.onopen = () => {
-    _wsReady = true;
-    if (currentUser) wsSend({ type: 'register', client_id: currentUser.username, role: 'receiver' });
+    _handshakePromise = _doHandshake().catch(err => {
+      console.error('[TALUS] Handshake failed:', err);
+      toastMsg('⚠ Key exchange failed — try reloading.');
+    });
   };
   _ws.onmessage = (event) => {
     let msg; try { msg = JSON.parse(event.data); } catch { return; }
@@ -189,6 +246,14 @@ function wsConnect() {
     }
     if (msg.type === 'incoming_transfer') onIncomingTransfer(msg);
     else if (msg.type === 'transfer_status_update') onTransferStatusUpdate(msg);
+    else if (msg.type === 'authorization_denied') {
+      const pending = _pendingResolvers['authorized_file_delivery'];
+      if (pending) {
+        clearTimeout(pending.timeout);
+        delete _pendingResolvers['authorized_file_delivery'];
+        pending.reject(new Error('authorization_denied'));
+      }
+    }
     else if (msg.type === 'error') toastMsg('⚠ Server: ' + msg.message);
   };
   _ws.onerror  = () => { _wsReady = false; };
@@ -331,12 +396,21 @@ function renderReceiveQueue() {
         <div class="rq-meta">${item.files.length} file(s) · ${item.time}</div>
       </div>
       <span class="rq-status ${item.status}">${item.status}</span>
+      <button onclick="event.stopPropagation(); openDeleteModal('${item.id}')" title="Discard transfer"
+        style="background:none;border:none;cursor:pointer;color:var(--text-muted);padding:4px;margin-left:6px;display:flex;align-items:center;border-radius:4px;"
+        onmouseover="this.style.color='#991b1b'" onmouseout="this.style.color='var(--text-muted)'">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      </button>
     </div>`).join('');
 }
 
 async function selectReceiveItem(id) {
   const item = receiveItems.find(i => i.id === id);
   if (!item) return;
+  if (item.status === 'expired') {
+    toastMsg('⚠ Access limit reached — this transfer is no longer accessible.');
+    return;
+  }
   if (item.maxViews && item.viewCount >= item.maxViews) {
     toastMsg('⚠ Maximum view count reached for this transfer.');
     return;
@@ -411,6 +485,9 @@ function _renderTransferDetail(item) {
     <div class="receive-detail-actions">
       <button class="btn-decline" onclick="respondReceive('${item.id}','declined')">Decline</button>
       <button class="btn-accept" onclick="respondReceive('${item.id}','accepted')">Accept &amp; Download</button>
+    </div>` : item.status === 'expired' ? `
+    <div style="margin-top:16px;background:#fef2f2;border:1px solid #fca5a5;border-radius:var(--radius-sm);padding:12px 14px;font-size:13px;color:#991b1b;font-weight:600;">
+      Access limit reached — this transfer is no longer accessible.
     </div>` : `
     <div style="margin-top:16px;font-size:13px;color:var(--text-muted);">
       This transfer was <strong>${item.status}</strong>.
@@ -424,9 +501,7 @@ async function respondReceive(id, decision) {
       { type: 'transfer_response', transfer_id: id, decision, client_id: currentUser.username },
       'transfer_response_ack'
     );
-  } catch (err) {
-    toastMsg('⚠ Could not sync status to server.');
-  }
+  } catch { toastMsg('⚠ Could not sync status to server.'); }
   if (decision === 'accepted') downloadTransfer(id);
   selectedReceiveId = null;
   renderReceiveQueue(); updateReceiveBadge();
@@ -441,28 +516,85 @@ async function respondReceive(id, decision) {
 
 async function downloadTransfer(id) {
   const item = receiveItems.find(i => i.id === id);
-  if (!item) return;
+  if (!item) return false;
+
+  let encrypted_receiver_metadata_b64 = '';
+  if (!MOCK_MODE) {
+    try { await _handshakePromise; } catch { toastMsg('⚠ Key exchange failed.'); return false; }
+    const metadata = { receiver_id: currentUser.username, timestamp: new Date().toISOString(),
+      ...(_pendingPasswordHash ? { password_hash: _pendingPasswordHash } : {}) };
+    const encMeta = await _aesGcmEncrypt(_sessionKey, new TextEncoder().encode(JSON.stringify(metadata)));
+    encrypted_receiver_metadata_b64 = btoa(String.fromCharCode(...encMeta));
+  }
+
   try {
     const reply = await wsRequest(
-      { type: 'request_file_access', receiver_id: currentUser.username, package_id: id, encrypted_receiver_metadata_b64: '' },
+      { type: 'request_file_access', receiver_id: currentUser.username, package_id: id, encrypted_receiver_metadata_b64 },
       'authorized_file_delivery',
       12000
     );
-    _triggerDownload(reply.encrypted_file_b64, item);
+    await _triggerDownload(reply.encrypted_file_b64, reply.encrypted_file_key_b64, item);
+    return true;
   } catch (err) {
-    toastMsg('⚠ Download failed — check console.');
+    if (err.message === 'authorization_denied') {
+      if (_pendingPasswordHash) {
+        receiveItems = receiveItems.map(i => i.id === id ? { ...i, passwordVerified: false } : i);
+        _pendingPasswordHash = null;
+        openReceivePasswordModal(id);
+        setTimeout(() => { document.getElementById('receive-pw-error').textContent = 'Incorrect password. Please try again.'; }, 100);
+      } else {
+        toastMsg('⚠ Access limit reached for this transfer.');
+        setTimeout(fetchTransfers, 1000);
+      }
+    } else {
+      toastMsg('⚠ Download failed — check console.');
+      console.error('[TALUS] downloadTransfer error:', err);
+    }
+    return false;
   }
 }
 
-function _triggerDownload(encryptedB64, item) {
-  const blob = new Blob([Uint8Array.from(atob(encryptedB64), c => c.charCodeAt(0))], { type: 'application/octet-stream' });
+async function _triggerDownload(encryptedFileB64, encryptedFileKeyB64, item) {
+  let fileBytes;
+  if (!MOCK_MODE && encryptedFileKeyB64 && _privateKey) {
+    const encKeyBytes = Uint8Array.from(atob(encryptedFileKeyB64), c => c.charCodeAt(0));
+    const fileKeyRaw = await crypto.subtle.decrypt({ name: 'RSA-OAEP' }, _privateKey, encKeyBytes);
+    const fileKey = await crypto.subtle.importKey('raw', fileKeyRaw, { name: 'AES-GCM' }, false, ['decrypt']);
+    const encFileBytes = Uint8Array.from(atob(encryptedFileB64), c => c.charCodeAt(0));
+    fileBytes = await _aesGcmDecrypt(fileKey, encFileBytes);
+  } else {
+    fileBytes = Uint8Array.from(atob(encryptedFileB64), c => c.charCodeAt(0));
+  }
+
+  // Parse structured payload and download each file
+  try {
+    const payload = JSON.parse(new TextDecoder().decode(fileBytes));
+    if (Array.isArray(payload)) {
+      payload.forEach(f => {
+        let blob;
+        if (f.type === 'file' && f.content) {
+          const bytes = Uint8Array.from(atob(f.content), c => c.charCodeAt(0));
+          blob = new Blob([bytes], { type: f.mime || 'application/octet-stream' });
+        } else if (f.type === 'text' && f.content) {
+          blob = new Blob([f.content], { type: 'text/plain' });
+        } else { return; }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = f.name; a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      });
+      return;
+    }
+  } catch { /* not structured payload — fall through */ }
+
+  // Raw fallback (mock mode)
+  const blob = new Blob([fileBytes], { type: 'application/octet-stream' });
   const url = URL.createObjectURL(blob);
   item.files.forEach(f => { const a = document.createElement('a'); a.href = url; a.download = f.name; a.click(); });
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 // ── Receiver password prompt ──────────────────────────────────────────
-let pendingPasswordTransferId = null;
+let pendingPasswordTransferId = null, _pendingPasswordHash = null;
 
 function openReceivePasswordModal(id) {
   pendingPasswordTransferId = id;
@@ -489,20 +621,49 @@ async function submitReceivePassword() {
   const errEl = document.getElementById('receive-pw-error');
   if (!pw) { errEl.textContent = 'Please enter a password.'; return; }
   const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
-  const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2,'0')).join('');
-  try {
-    const reply = await wsRequest(
-      { type: 'verify_transfer_password', transfer_id: pendingPasswordTransferId, password_hash: hashHex, client_id: currentUser.username },
-      'verify_transfer_password_ack'
-    );
-    if (reply.status === 'denied') { errEl.textContent = 'Invalid password.'; return; }
-    receiveItems = receiveItems.map(i => i.id === pendingPasswordTransferId ? { ...i, passwordVerified: true } : i);
-    closeReceivePasswordModal();
-    selectReceiveItem(pendingPasswordTransferId);
-  } catch (err) { errEl.textContent = 'Could not verify — try again.'; }
+  _pendingPasswordHash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2,'0')).join('');
+  receiveItems = receiveItems.map(i => i.id === pendingPasswordTransferId ? { ...i, passwordVerified: true } : i);
+  const tid = pendingPasswordTransferId;
+  closeReceivePasswordModal();
+  selectReceiveItem(tid);
 }
 document.getElementById('receive-pw-modal').addEventListener('click', function(e) {
   if (e.target === this) closeReceivePasswordModal();
+});
+
+// ── Delete transfer ───────────────────────────────────────────────────
+let _pendingDeleteId = null;
+
+function openDeleteModal(id) {
+  _pendingDeleteId = id;
+  document.getElementById('delete-confirm-modal').classList.add('open');
+}
+function closeDeleteModal() {
+  _pendingDeleteId = null;
+  document.getElementById('delete-confirm-modal').classList.remove('open');
+}
+async function confirmDelete() {
+  const id = _pendingDeleteId;
+  closeDeleteModal();
+  if (!id) return;
+  try {
+    await wsRequest({ type: 'delete_transfer', package_id: id }, 'delete_transfer_ack');
+  } catch { toastMsg('⚠ Could not delete from server.'); }
+  receiveItems = receiveItems.filter(i => i.id !== id);
+  if (selectedReceiveId === id) {
+    selectedReceiveId = null;
+    document.getElementById('receive-detail').innerHTML = `
+      <div class="receive-detail-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 13h6M9 17h4"/></svg>
+        <p>Select a transfer</p><small>Click an item in the queue to review it</small>
+      </div>`;
+  }
+  renderReceiveQueue();
+  updateReceiveBadge();
+  toastMsg('Transfer discarded.');
+}
+document.getElementById('delete-confirm-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeDeleteModal();
 });
 
 // ── Toast ─────────────────────────────────────────────────────────────
