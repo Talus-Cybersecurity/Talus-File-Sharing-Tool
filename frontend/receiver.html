@@ -116,7 +116,8 @@ const MOCK_TRANSFERS = [
     verified: true,
     passwordRequired: false,
     passwordVerified: false,
-    timeRestricted: false,
+    timeRestricted: true,
+    todDisplay: '9:00 AM – 5:00 PM · Eastern (ET)',
     withinAllowedWindow: true,
     files: [
       { name: 'report.pdf', size: '1.2 MB', type: 'PDF' },
@@ -137,6 +138,7 @@ const MOCK_TRANSFERS = [
     passwordRequired: false,
     passwordVerified: false,
     timeRestricted: false,
+    todDisplay: '',
     withinAllowedWindow: true,
     files: [
       { name: 'design.png', size: '3.4 MB', type: 'PNG' }
@@ -156,6 +158,7 @@ const MOCK_TRANSFERS = [
     passwordRequired: true,
     passwordVerified: false,
     timeRestricted: false,
+    todDisplay: '',
     withinAllowedWindow: true,
     files: [
       { name: 'contract.docx', size: '248 KB', type: 'DOCX' }
@@ -429,10 +432,6 @@ async function selectReceiveItem(id) {
     toastMsg('⚠ Maximum view count reached for this transfer.');
     return;
   }
-  if (item.timeRestricted && !item.withinAllowedWindow) {
-    showReceiveError(`Access restricted — "${item.sender}" limited to ${item.allowedWindow}.`);
-    return;
-  }
   selectedReceiveId = id;
   renderReceiveQueue();
   _renderTransferDetail(receiveItems.find(i => i.id === id));
@@ -477,6 +476,15 @@ function _renderTransferDetail(item) {
       </div>
     </div>
 
+    ${item.timeRestricted ? `
+    <div style="margin-top:12px;display:flex;align-items:center;gap:10px;padding:10px 13px;border-radius:var(--radius-sm);background:${item.withinAllowedWindow ? '#e6f9f0' : '#fef2f2'};border:1px solid ${item.withinAllowedWindow ? '#a3d9bb' : '#fca5a5'};">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${item.withinAllowedWindow ? '#1a6b40' : '#991b1b'}" stroke-width="2.5" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <div>
+        <div style="font-size:12px;font-weight:700;color:${item.withinAllowedWindow ? '#1a6b40' : '#991b1b'};">${item.withinAllowedWindow ? 'Within allowed time window' : 'Outside allowed time window'}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${item.todDisplay}</div>
+      </div>
+    </div>` : ''}
+
     ${item.options && item.options.length ? `
     <div style="margin-top:12px;">
       <div class="confirm-items-label">Send options applied</div>
@@ -488,15 +496,19 @@ function _renderTransferDetail(item) {
     ${item.status === 'pending' ? `
     <div class="receive-detail-actions">
       <button class="btn-decline" onclick="respondReceive('${item.id}','declined')">Decline</button>
-      ${item.passwordRequired && !item.passwordVerified
-        ? `<button class="btn-accept" onclick="openReceivePasswordModal('${item.id}')">Enter Password / PIN</button>`
-        : `<button class="btn-accept" onclick="respondReceive('${item.id}','accepted')">Accept &amp; Download</button>`
+      ${item.timeRestricted && !item.withinAllowedWindow
+        ? `<button class="btn-accept" disabled style="opacity:0.4;cursor:not-allowed;" title="Outside allowed time window">Accept &amp; Download</button>`
+        : item.passwordRequired && !item.passwordVerified
+          ? `<button class="btn-accept" onclick="openReceivePasswordModal('${item.id}')">Enter Password / PIN</button>`
+          : `<button class="btn-accept" onclick="respondReceive('${item.id}','accepted')">Accept &amp; Download</button>`
       }
     </div>` : item.status === 'accepted' ? `
     <div class="receive-detail-actions">
-      ${item.passwordRequired && !item.passwordVerified
-        ? `<button class="btn-accept" onclick="openReceivePasswordModal('${item.id}')">Enter Password / PIN to Download</button>`
-        : `<button class="btn-accept" onclick="downloadTransfer('${item.id}')">Download Again</button>`
+      ${item.timeRestricted && !item.withinAllowedWindow
+        ? `<button class="btn-accept" disabled style="opacity:0.4;cursor:not-allowed;" title="Outside allowed time window">Download Again</button>`
+        : item.passwordRequired && !item.passwordVerified
+          ? `<button class="btn-accept" onclick="openReceivePasswordModal('${item.id}')">Enter Password / PIN to Download</button>`
+          : `<button class="btn-accept" onclick="downloadTransfer('${item.id}')">Download Again</button>`
       }
     </div>` : item.status === 'expired' ? `
     <div style="margin-top:16px;background:#fef2f2;border:1px solid #fca5a5;border-radius:var(--radius-sm);padding:12px 14px;font-size:13px;color:#991b1b;font-weight:600;">

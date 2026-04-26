@@ -11,6 +11,7 @@ from datetime import timedelta
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from pathlib import Path
 
 from typing import Any, Dict, Optional
@@ -529,6 +530,28 @@ async def handle_create_session_key(ws: WebSocketServerProtocol, data: Dict[str,
         "encrypted_session_key_b64": encode_b64(encrypted_key)
     })
 
+def _check_tod_window(requirements: Dict[str, Any]) -> tuple[bool, str, bool]:
+    """Returns (time_restricted, tod_display, within_window)."""
+    tod_window = requirements.get("time_of_day_window")
+    if not isinstance(tod_window, dict):
+        return False, "", True
+    tod_display = tod_window.get("display", "")
+    try:
+        tz = ZoneInfo(tod_window.get("timezone", "UTC"))
+        now_local = datetime.now(tz)
+        now_min = now_local.hour * 60 + now_local.minute
+        sh, sm = map(int, tod_window.get("start", "00:00").split(':'))
+        eh, em = map(int, tod_window.get("end", "23:59").split(':'))
+        start_min = sh * 60 + sm
+        end_min   = eh * 60 + em
+        if start_min <= end_min:
+            within_window = start_min <= now_min <= end_min
+        else:
+            within_window = now_min >= start_min or now_min <= end_min
+    except Exception:
+        within_window = True
+    return True, tod_display, within_window
+
 async def handle_get_incoming_transfers(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
     client_id = data.get("client_id", "")
     transfers = []
@@ -569,6 +592,7 @@ async def handle_get_incoming_transfers(ws: WebSocketServerProtocol, data: Dict[
                 status = "pending"
         else:
             status = "pending"
+        time_restricted, tod_display, within_window = _check_tod_window(requirements)
         transfers.append({
             "id": pkg.package_id,
             "sender": pkg.sender_id,
@@ -579,8 +603,9 @@ async def handle_get_incoming_transfers(ws: WebSocketServerProtocol, data: Dict[
             "verified": True,
             "passwordRequired": bool(requirements.get("password")),
             "passwordVerified": False,
-            "timeRestricted": False,
-            "withinAllowedWindow": True,
+            "timeRestricted": time_restricted,
+            "todDisplay": tod_display,
+            "withinAllowedWindow": within_window,
             "files": [{"name": pkg.file_name or "transfer", "size": pkg.file_size or "unknown", "type": (pkg.file_type or "").split("/")[-1].upper() or "FILE"}],
             "options": [],
             "maxViews": max_views,
@@ -718,6 +743,7 @@ async def handle_upload_package(ws: WebSocketServerProtocol, data: Dict[str, Any
     receiver_username = receiver_id.split('#')[0] if '#' in receiver_id else receiver_id
     receiver_session = connected_clients.get(receiver_username)
     if receiver_session:
+        time_restricted, tod_display, within_window = _check_tod_window(requirements)
         transfer_obj = {
             "id": package_id,
             "sender": sender_id,
@@ -728,8 +754,9 @@ async def handle_upload_package(ws: WebSocketServerProtocol, data: Dict[str, Any
             "verified": True,
             "passwordRequired": bool(requirements.get("password")),
             "passwordVerified": False,
-            "timeRestricted": False,
-            "withinAllowedWindow": True,
+            "timeRestricted": time_restricted,
+            "todDisplay": tod_display,
+            "withinAllowedWindow": within_window,
             "files": [{"name": file_name or "transfer", "size": file_size or "unknown", "type": (file_type or "").split("/")[-1].upper() or "FILE"}],
             "options": [],
             "maxViews": requirements.get("max_views"),
@@ -769,6 +796,29 @@ def validate_receiver_against_requirements(
                     return False, "Access denied: your IP address is not permitted"
             continue
  
+        if field_name == "time_of_day_window" and isinstance(expected_value, dict):
+            start_str = expected_value.get("start", "00:00")
+            end_str   = expected_value.get("end",   "23:59")
+            tz_name   = expected_value.get("timezone", "UTC")
+            try:
+                tz = ZoneInfo(tz_name)
+                now_local   = datetime.now(tz)
+                now_min     = now_local.hour * 60 + now_local.minute
+                sh, sm      = map(int, start_str.split(':'))
+                eh, em      = map(int, end_str.split(':'))
+                start_min   = sh * 60 + sm
+                end_min     = eh * 60 + em
+                if start_min <= end_min:
+                    in_window = start_min <= now_min <= end_min
+                else:  # window crosses midnight
+                    in_window = now_min >= start_min or now_min <= end_min
+                if not in_window:
+                    display = expected_value.get("display", f"{start_str}–{end_str}")
+                    return False, f"Access denied: outside allowed time window ({display})"
+            except (ZoneInfoNotFoundError, Exception):
+                pass  # unknown timezone — allow access
+            continue
+
         # All other fields are sender-side policy flags (limited_access, max_views,
         # track_views, watermark, device_cert, ip_filter, time_of_day, etc.).
         # They are enforced elsewhere (view count, DB checks) — skip here.
