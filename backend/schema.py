@@ -113,7 +113,7 @@ class Schema:
         self.con.commit()
 
     def run(self):
-        self.delete_all_tables()
+        #self.delete_all_tables()
         self.create_user_table()
         self.migrate_user_table()
         self.create_accesslog_table()
