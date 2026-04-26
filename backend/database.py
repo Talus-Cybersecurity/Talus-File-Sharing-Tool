@@ -59,7 +59,7 @@ class Database:
         row = self.schema.cur.fetchone()
         return row[0] if row else 0
 
-     def insert_verification_token(self, token_id: str, user_id: str,
+    def insert_verification_token(self, token_id: str, user_id: str,
                                    token: str, expires_at):
         # Stores a new verification token for user.
         self.schema.cur.execute("""

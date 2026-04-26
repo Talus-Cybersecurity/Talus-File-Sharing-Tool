@@ -157,10 +157,9 @@ async function doRegister() {
     tempWs.close();
 
     if (reply.type === 'create_account_ack') {
-      document.getElementById('register-form-body').style.display = 'none';
-      document.getElementById('register-success-body').style.display = '';
-      document.getElementById('register-success-msg').textContent =
-        `Welcome, ${username}! Your account has been created. You can now sign in.`;
+      document.getElementById('register-screen').classList.add('hidden');
+      _pendingPassword = password;
+      openVerifyScreen(username, email);
       return;
     }
     errEl.textContent = reply.message || 'Registration failed — please try again.';
@@ -174,8 +173,49 @@ async function doRegister() {
   }
 }
 
+// ── Shared login helpers (mirrors login.html) ─────────────────────────
+function _fromB64(b64) {
+  const bin = atob(b64);
+  return Uint8Array.from(bin, c => c.charCodeAt(0));
+}
+
+async function _unwrapPrivateKey(password, pbkdf2SaltB64, aesIvB64, encryptedPrivateKeyB64) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']
+  );
+  const aesKey = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: _fromB64(pbkdf2SaltB64), iterations: 600000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['unwrapKey']
+  );
+  return crypto.subtle.unwrapKey(
+    'pkcs8',
+    _fromB64(encryptedPrivateKeyB64),
+    aesKey,
+    { name: 'AES-GCM', iv: _fromB64(aesIvB64) },
+    { name: 'RSA-OAEP', hash: 'SHA-256' },
+    true,
+    ['decrypt']
+  );
+}
+
+async function _afterLogin(username, userId, privateKey, publicKeyPem) {
+  const exportedKey = await crypto.subtle.exportKey('pkcs8', privateKey);
+  const keyB64 = btoa(String.fromCharCode(...new Uint8Array(exportedKey)));
+  sessionStorage.setItem('talus_user', JSON.stringify({
+    username, userId, initials: username.slice(0, 2).toUpperCase()
+  }));
+  sessionStorage.setItem('talus_private_key', keyB64);
+  if (publicKeyPem) sessionStorage.setItem('talus_public_key_pem', publicKeyPem);
+  window.location.href = 'sender.html';
+}
+
 // ── Email verification ────────────────────────────────────────────────
-let _verifyUsername = null, _verifyEmail = null, _resendTimer = null, _resendSeconds = 0;
+let _verifyUsername = null, _verifyEmail = null, _pendingPassword = null,
+    _resendTimer = null, _resendSeconds = 0;
 
 function openVerifyScreen(username, email) {
   _verifyUsername = username;
@@ -269,6 +309,28 @@ async function doVerifyEmail() {
     tempWs.close();
 
     if (reply.type === 'verify_email_ack') {
+      btn.textContent = 'Logging in…';
+      try {
+        const loginWs = new WebSocket(WS_URL);
+        await new Promise((res, rej) => { loginWs.onopen = res; loginWs.onerror = () => rej(new Error('NO_SERVER')); });
+        const passwordHashBuf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(_pendingPassword));
+        const passwordHash = Array.from(new Uint8Array(passwordHashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+        const loginReply = await new Promise((res, rej) => {
+          const t = setTimeout(() => rej(new Error('TIMEOUT')), 8000);
+          loginWs.onmessage = e => { clearTimeout(t); res(JSON.parse(e.data)); };
+          loginWs.onerror   = () => { clearTimeout(t); rej(new Error('CONNECTION_ERROR')); };
+          loginWs.send(JSON.stringify({ type: 'login', username: _verifyUsername, password_hash: passwordHash }));
+        });
+        loginWs.close();
+        if (loginReply.type === 'login_ack') {
+          const privateKey = await _unwrapPrivateKey(
+            _pendingPassword, loginReply.pbkdf2_salt, loginReply.aes_iv, loginReply.encrypted_private_key
+          );
+          await _afterLogin(_verifyUsername, loginReply.user_id, privateKey, loginReply.public_key_pem);
+          return;
+        }
+      } catch (_) { /* fall through to success screen if auto-login fails */ }
+      // Fallback: show success screen and let user sign in manually
       document.getElementById('verify-screen').classList.add('hidden');
       document.getElementById('register-screen').classList.remove('hidden');
       document.getElementById('register-form-body').style.display = 'none';

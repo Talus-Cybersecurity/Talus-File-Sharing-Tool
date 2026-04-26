@@ -26,8 +26,7 @@ class Schema:
                 public_key TEXT,
                 encrypted_private_key TEXT,
                 pbkdf2_salt TEXT,
-                aes_iv TEXT
-                tag_id TEXT
+                aes_iv TEXT,
                 is_verified BOOLEAN NOT NULL DEFAULT FALSE
             )
         """)
@@ -37,7 +36,10 @@ class Schema:
         for col in ("public_key", "encrypted_private_key", "pbkdf2_salt", "aes_iv"):
             self.cur.execute(f"""
                 ALTER TABLE "User" ADD COLUMN IF NOT EXISTS {col} TEXT
-            """)  
+            """)
+        self.cur.execute("""
+            ALTER TABLE "User" ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT FALSE
+        """)  
 
     def create_accesslog_table(self):
         self.cur.execute("""
@@ -103,7 +105,7 @@ class Schema:
         """)
 
     def delete_all_tables(self):
-        self.cur.execute("""DROP TABLE IF EXISTS "EmailVerification" CASCASE;""")
+        self.cur.execute("""DROP TABLE IF EXISTS "EmailVerification" CASCADE;""")
         self.cur.execute("""DROP TABLE IF EXISTS "FilePolicy" CASCADE;""")
         self.cur.execute("""DROP TABLE IF EXISTS "File" CASCADE;""")
         self.cur.execute("""DROP TABLE IF EXISTS "AccessLog" CASCADE;""")
@@ -111,13 +113,13 @@ class Schema:
         self.con.commit()
 
     def run(self):
+        self.delete_all_tables()
         self.create_user_table()
         self.migrate_user_table()
         self.create_accesslog_table()
         self.create_file_table()
         self.create_filepolicy_table()
         self.create_email_verification_table()
-        # self.delete_all_tables()
         self.con.commit()
         self.con.close()
 

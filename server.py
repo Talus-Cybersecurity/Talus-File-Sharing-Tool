@@ -71,6 +71,7 @@ public_keys: Dict[str, str] = {}
 sender_session_keys: Dict[str, bytes] = {}
 receiver_session_keys: Dict[str, bytes] = {}
 packages: Dict[str, FilePackage] = {}
+_pending_registrations: Dict[str, dict] = {}  # username -> pending reg data + verification code
 
 async def handle_get_logs(ws, data):
     client_id = data.get("client_id")
@@ -170,110 +171,119 @@ async def handle_create_account(ws: WebSocketServerProtocol, data: Dict[str, Any
     pbkdf2_salt      = data.get("pbkdf2_salt")
     aes_iv           = data.get("aes_iv")
 
-    # Check username
     if not username or len(username) < 3 or len(username) > 36:
         await send_json(ws, {"type": "error",
             "message": "Username must be between 3 and 36 characters."})
         return
 
-    # password is a SHA-256 hex hash; plaintext validation happens client-side
     if not password or len(password) != 64 or not re.fullmatch(r"[0-9a-f]{64}", password):
         await send_json(ws, {"type": "error",
             "message": "Invalid password format."})
         return
-        
-    # If password fails to hash, this function prevents the database from 
-    # storing the password as "None"
+
     new_hash_pw = hash_password(password)
     if new_hash_pw is None:
-        entry = build_log_entry(
-            event_type="register_failure",
-            result="failure",
-            message="Password hashing failed",
-            client_id=user_id,
-            role="unknown"
-        )
-        write_log(entry)
-
-        await send_json(ws, {
-            "type": "error", 
-            "message": "Password hashing failed"
-        })
+        write_log(build_log_entry(event_type="register_failure", result="failure",
+            message="Password hashing failed", client_id=user_id, role="unknown"))
+        await send_json(ws, {"type": "error", "message": "Password hashing failed"})
         return
-    try:
-        db.insert_user(user_id, username, email, new_hash_pw, tag_id,
-                       public_key_pem, encrypted_private_key, pbkdf2_salt, aes_iv)
-        if public_key_pem:
-            public_keys[user_id] = public_key_pem
-    except psycopg2.IntegrityError:
-        entry = build_log_entry(
-            event_type="register_failure",
-            result="failure",
-            message="Username or email already taken",
-            client_id=user_id,
-            role="unknown",
-            failure_reason="duplicate_user"
-        )
-        write_log(entry)
 
-        await send_json(ws, {
-            "type": "error",
-            "message": "Username or email is already taken."
-        })
+    # Reject if username already exists in DB or has a pending registration
+    if db.check_if_user_exists(username) or username in _pending_registrations:
+        write_log(build_log_entry(event_type="register_failure", result="failure",
+            message="Username or email already taken", client_id=user_id,
+            role="unknown", failure_reason="duplicate_user"))
+        await send_json(ws, {"type": "error", "message": "Username or email is already taken."})
         return
-        
-    # Generate verification code
-    code       = generate_verification_code()
-    token_id   = str(uuid.uuid4())
-    expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=10)
-    db.insert_verification_token(token_id, user_id, code, expires_at)
- 
-    # Send the email
+
+    # Hold registration data in memory — only write to DB after email is verified
+    code = generate_verification_code()
+    _pending_registrations[username] = {
+        "user_id": user_id,
+        "email": email,
+        "password": new_hash_pw,
+        "tag_id": tag_id,
+        "public_key_pem": public_key_pem,
+        "encrypted_private_key": encrypted_private_key,
+        "pbkdf2_salt": pbkdf2_salt,
+        "aes_iv": aes_iv,
+        "code": code,
+        "expires_at": datetime.now(timezone.utc) + timedelta(minutes=10),
+    }
+
     sent = send_verification_email(email, code)
     if not sent:
         logging.warning("Failed to send verification email to %s", email)
-    
-    entry = build_log_entry(
-        event_type="register_success",
-        result="success",
-        message="User account created",
-        client_id=user_id,
-        role="user"
-    )
-    write_log(entry)
 
-    await send_json(ws, {
-        "type": "create_account_ack",
-        "user_id": user_id
-    })
+    await send_json(ws, {"type": "create_account_ack", "user_id": user_id})
 
 async def handle_verify_email(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
-    # Verifies the user's email using the 6 digit code they received.
-    user_id = (data.get("user_id") or "").strip()
-    code    = (data.get("code") or "").strip()
- 
-    if not user_id or not code:
-        await send_json(ws, {"type": "error",
-            "message": "user_id and code are required."})
-        return
- 
-    row = db.get_verification_token(user_id, code)
-    if row is None:
-        await send_json(ws, {"type": "error",
-            "message": "Invalid or expired verification code."})
-        return
- 
-    token_id = row[0]
-    db.mark_token_used(token_id)
-    db.verify_user(user_id)
- 
-    logging.info("Email verified for user_id=%s", user_id)
-    await send_json(ws, {
-        "type": "verify_email_ack",
-        "message": "Email verified. You can now log in."
-    })
+    username = (data.get("username") or "").strip()
+    code     = (data.get("code") or "").strip()
 
-async def handle_login(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None: 
+    if not username or not code:
+        await send_json(ws, {"type": "error", "message": "username and code are required."})
+        return
+
+    pending = _pending_registrations.get(username)
+    if not pending:
+        await send_json(ws, {"type": "error", "message": "Invalid or expired verification code."})
+        return
+
+    if datetime.now(timezone.utc) > pending["expires_at"]:
+        del _pending_registrations[username]
+        await send_json(ws, {"type": "error",
+            "message": "Verification code has expired. Please register again."})
+        return
+
+    if pending["code"] != code:
+        await send_json(ws, {"type": "error", "message": "Invalid or expired verification code."})
+        return
+
+    # Code is valid — commit the user to the database now
+    try:
+        db.insert_user(
+            pending["user_id"], username, pending["email"], pending["password"],
+            pending["tag_id"], pending["public_key_pem"], pending["encrypted_private_key"],
+            pending["pbkdf2_salt"], pending["aes_iv"]
+        )
+        db.verify_user(pending["user_id"])
+        if pending["public_key_pem"]:
+            public_keys[pending["user_id"]] = pending["public_key_pem"]
+    except psycopg2.IntegrityError:
+        await send_json(ws, {"type": "error", "message": "Username or email is already taken."})
+        return
+    finally:
+        _pending_registrations.pop(username, None)
+
+    logging.info("Account created and email verified for username=%s", username)
+    write_log(build_log_entry(event_type="register_success", result="success",
+        message="User account created", client_id=pending["user_id"], role="user"))
+    await send_json(ws, {"type": "verify_email_ack", "message": "Email verified. You can now log in."})
+
+async def handle_resend_verification(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
+    username = (data.get("username") or "").strip()
+    if not username:
+        await send_json(ws, {"type": "error", "message": "username is required."})
+        return
+
+    pending = _pending_registrations.get(username)
+    if not pending:
+        await send_json(ws, {"type": "error", "message": "No pending registration found."})
+        return
+
+    code = generate_verification_code()
+    pending["code"] = code
+    pending["expires_at"] = datetime.now(timezone.utc) + timedelta(minutes=10)
+
+    sent = send_verification_email(pending["email"], code)
+    if not sent:
+        await send_json(ws, {"type": "error", "message": "Failed to send email. Please try again."})
+        return
+
+    await send_json(ws, {"type": "resend_verification_ack"})
+
+async def handle_login(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
     username = data["username"]
     password = data["password_hash"]   # client sends SHA-256 hash; server verifies with bcrypt
     user_matches = False
@@ -848,18 +858,13 @@ async def handle_request_file_access(ws: WebSocketServerProtocol, data: Dict[str
         except (TypeError, ValueError):
             pass
 
-    allowed, failed_field = validate_receiver_against_requirements(
-        receiver_metadata,
-        requirements
-        
     # TALUS-233 Check access count from AccessLog
-    requirements = package.parsed_requirements or {}
     if "access_count" in requirements and requirements["access_count"] is not None:
         current_count = db.get_access_count(package_id)
         if current_count >= requirements["access_count"]:
             await send_json(ws, {
                 "type": "authorization_denied",
-                "encrypted_error_b64": encode_b64(fernet_encrypt(
+                "encrypted_error_b64": encode_b64(aes_gcm_encrypt(
                     session_key,
                     json.dumps({
                         "status": "denied",
@@ -869,7 +874,7 @@ async def handle_request_file_access(ws: WebSocketServerProtocol, data: Dict[str
                 ))
             })
             return
-            
+
     # TALUS-232 - Get IP from websocket
     ws_ip = ws.remote_address[0] if ws.remote_address else None
 
@@ -879,9 +884,9 @@ async def handle_request_file_access(ws: WebSocketServerProtocol, data: Dict[str
         requirements,
         ws_ip=ws_ip
     )
- 
+
     access_status = "granted" if allowed else f"denied:{failed_field}"
- 
+
     log_detail = json.dumps({
         "sender_id":    package.sender_id,
         "receiver_id":  receiver_id,
@@ -899,10 +904,8 @@ async def handle_request_file_access(ws: WebSocketServerProtocol, data: Dict[str
             file_id=package_id,
             access_attempts=1,
             timestamps=datetime.now(timezone.utc),
-            ip_address=receiver_metadata.get("ip_address"),
-            access_status=log_detail
             ip_address=ws_ip,
-            access_status=access_status
+            access_status=log_detail
         )
     except Exception:
         logging.exception("insert_access_log failed for package_id=%s", package_id)
@@ -986,6 +989,8 @@ async def handle_message(ws: WebSocketServerProtocol, raw_message: str) -> None:
             await handle_login(ws, data)
         elif msg_type == "verify_email":
             await handle_verify_email(ws, data)
+        elif msg_type == "resend_verification":
+            await handle_resend_verification(ws, data)
         elif msg_type == "session_clear":
             pass
         elif msg_type == "get_logs":
