@@ -92,7 +92,7 @@
               <label class="toggle"><input type="checkbox" onchange="toastMsg('Time restriction '+togStr(this))"><span class="toggle-track"></span></label>
             </div>
             <div class="setting-row">
-              <span class="setting-label">Limited Access</span>
+              <span class="setting-label">Limit Downloads</span>
               <span class="setting-value" id="la-value" onclick="editLimitedAccess()">5</span>
               <label class="toggle"><input type="checkbox" onchange="toastMsg('Limited access '+togStr(this))"><span class="toggle-track"></span></label>
             </div>
@@ -507,7 +507,7 @@ function openConfirmModal(id) {
   document.getElementById('confirm-tag').textContent    = '#' + r.tag;
   document.getElementById('confirm-items-list').innerHTML = attachedItems.map(item =>
     `<div class="confirm-item-chip"><span>${item.type==='folder'?'📁':item.type==='text'?'📝':'📄'}</span><span>${item.name}</span></div>`).join('');
-  const labels = ['IP Filter','Device Certification','Track File Views','Time of Day','Limited Access','Watermark','Password / PIN'];
+  const labels = ['IP Filter','Device Certification','Track File Views','Time of Day','Limit Downloads','Watermark','Password / PIN'];
   const icons  = ['🌐','🔒','👁','🕐','🔢','💧','🔑'];
   const values = [
     ipList.length ? ipList.slice(0,2).join(', ')+(ipList.length>2?'…':'') : null,

@@ -433,15 +433,6 @@ async function selectReceiveItem(id) {
     showReceiveError(`Access restricted — "${item.sender}" limited to ${item.allowedWindow}.`);
     return;
   }
-  if (!item.passwordRequired || item.passwordVerified) {
-    try {
-      await wsRequest(
-        { type: 'log_transfer_view', transfer_id: id, client_id: currentUser.username },
-        'log_transfer_view_ack'
-      );
-      receiveItems = receiveItems.map(i => i.id === id ? { ...i, viewCount: (i.viewCount || 0) + 1 } : i);
-    } catch { toastMsg('⚠ Could not log view — proceeding anyway.'); }
-  }
   selectedReceiveId = id;
   renderReceiveQueue();
   _renderTransferDetail(receiveItems.find(i => i.id === id));
@@ -471,8 +462,8 @@ function _renderTransferDetail(item) {
     <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;">
       <div class="confirm-items-label">Files included</div>
       ${item.maxViews
-        ? `<span style="font-family:'Space Mono',monospace;font-size:11px;color:${item.viewCount >= item.maxViews ? '#991b1b' : 'var(--text-muted)'};">${item.viewCount} / ${item.maxViews} views used</span>`
-        : `<span style="font-family:'Space Mono',monospace;font-size:11px;color:var(--text-muted);">Unlimited views</span>`
+        ? `<span style="font-family:'Space Mono',monospace;font-size:11px;color:${item.viewCount >= item.maxViews ? '#991b1b' : 'var(--text-muted)'};">${item.viewCount} / ${item.maxViews} downloads</span>`
+        : `<span style="font-family:'Space Mono',monospace;font-size:11px;color:var(--text-muted);">Unlimited downloads</span>`
       }
     </div>
     <div style="margin-top:8px;">
@@ -564,6 +555,9 @@ async function downloadTransfer(id) {
     );
     _pendingPasswordHash = null;
     await _triggerDownload(reply.encrypted_file_b64, reply.encrypted_file_key_b64, item);
+    receiveItems = receiveItems.map(i => i.id === id ? { ...i, viewCount: (i.viewCount || 0) + 1 } : i);
+    const updated = receiveItems.find(i => i.id === id);
+    if (updated && selectedReceiveId === id) _renderTransferDetail(updated);
     return true;
   } catch (err) {
     if (err.message === 'authorization_denied') {

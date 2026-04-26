@@ -769,21 +769,11 @@ def validate_receiver_against_requirements(
                     return False, "Access denied: your IP address is not permitted"
             continue
  
-        # All other fields
-        if field_name not in receiver_metadata:
-            return False, f"Access denied: missing required field '{field_name}'"
- 
-        actual_value = receiver_metadata[field_name]
- 
-        if isinstance(expected_value, dict):
-            if "min" in expected_value and actual_value < expected_value["min"]:
-                return False, f"Access denied: '{field_name}' is below the minimum allowed value"
-            if "max" in expected_value and actual_value > expected_value["max"]:
-                return False, f"Access denied: '{field_name}' exceeds the maximum allowed value"
-        else:
-            if actual_value != expected_value:
-                return False, f"Access denied: '{field_name}' does not match the required value"
- 
+        # All other fields are sender-side policy flags (limited_access, max_views,
+        # track_views, watermark, device_cert, ip_filter, time_of_day, etc.).
+        # They are enforced elsewhere (view count, DB checks) — skip here.
+        continue
+
     return True, None
 
 # TALUS-194: Detect if incoming is file access request
