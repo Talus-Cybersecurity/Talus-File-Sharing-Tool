@@ -75,35 +75,35 @@
             <div class="setting-row">
               <span class="setting-label">IP</span>
               <button class="gear-btn" onclick="openSetting('IP')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg></button>
-              <label class="toggle"><input type="checkbox" checked onchange="toastMsg('IP filter '+togStr(this))"><span class="toggle-track"></span></label>
+              <label class="toggle"><input type="checkbox" onchange="toastMsg('IP filter '+togStr(this))"><span class="toggle-track"></span></label>
             </div>
             <div class="setting-row">
               <span class="setting-label">Device certification</span>
               <button class="gear-btn" onclick="openSetting('Device certification')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg></button>
-              <label class="toggle"><input type="checkbox" checked onchange="toastMsg('Device cert '+togStr(this))"><span class="toggle-track"></span></label>
+              <label class="toggle"><input type="checkbox" onchange="toastMsg('Device cert '+togStr(this))"><span class="toggle-track"></span></label>
             </div>
             <div class="setting-row">
               <span class="setting-label">Track file views</span>
-              <label class="toggle"><input type="checkbox" checked onchange="toastMsg('Track file views '+togStr(this))"><span class="toggle-track"></span></label>
+              <label class="toggle"><input type="checkbox" onchange="toastMsg('Track file views '+togStr(this))"><span class="toggle-track"></span></label>
             </div>
             <div class="setting-row">
               <span class="setting-label">Time of day</span>
               <span class="setting-value" id="tod-value" onclick="editTimeOfDay()">9:00 – 5:00</span>
-              <label class="toggle"><input type="checkbox" checked onchange="toastMsg('Time restriction '+togStr(this))"><span class="toggle-track"></span></label>
+              <label class="toggle"><input type="checkbox" onchange="toastMsg('Time restriction '+togStr(this))"><span class="toggle-track"></span></label>
             </div>
             <div class="setting-row">
               <span class="setting-label">Limited Access</span>
               <span class="setting-value" id="la-value" onclick="editLimitedAccess()">5</span>
-              <label class="toggle"><input type="checkbox" checked onchange="toastMsg('Limited access '+togStr(this))"><span class="toggle-track"></span></label>
+              <label class="toggle"><input type="checkbox" onchange="toastMsg('Limited access '+togStr(this))"><span class="toggle-track"></span></label>
             </div>
             <div class="setting-row">
               <span class="setting-label">Watermark</span>
-              <label class="toggle"><input type="checkbox" checked onchange="toastMsg('Watermark '+togStr(this))"><span class="toggle-track"></span></label>
+              <label class="toggle"><input type="checkbox" onchange="toastMsg('Watermark '+togStr(this))"><span class="toggle-track"></span></label>
             </div>
             <div class="setting-row">
               <span class="setting-label">Password / Pin</span>
               <button class="gear-btn" onclick="openSetting('Password/PIN')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg></button>
-              <label class="toggle"><input type="checkbox" checked onchange="toastMsg('Password/PIN '+togStr(this))"><span class="toggle-track"></span></label>
+              <label class="toggle"><input type="checkbox" id="password-toggle" onchange="onPasswordToggle(this)"><span class="toggle-track"></span></label>
             </div>
           </div>
         </div>
@@ -239,7 +239,7 @@
       <div id="pin-saved" style="display:none;text-align:center"><span class="saved-badge">✓ PIN saved</span></div>
     </div>
     <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeModal('pin-modal')">Cancel</button>
+      <button class="btn-cancel" onclick="cancelPinModal()">Cancel</button>
       <button class="btn-save" onclick="savePinOrPassword()">Save</button>
     </div>
   </div>
@@ -443,8 +443,17 @@ function renderAttached() {
 }
 
 // ── Recipients ────────────────────────────────────────────────────────
+const _recipientsKey = () => `talus_recipients_${currentUser.userId}`;
+function _saveRecipients() { localStorage.setItem(_recipientsKey(), JSON.stringify(recipients)); }
+function _loadRecipients() {
+  try { recipients = JSON.parse(localStorage.getItem(_recipientsKey()) || '[]'); } catch { recipients = []; }
+  renderRecipients();
+}
+
 let recipients = [];
-function addRecipient() {
+_loadRecipients();
+
+async function addRecipient() {
   const input = document.getElementById('recipient-input');
   const val   = input.value.trim();
   if (!val) { toastMsg('Enter a username#tag to add.'); return; }
@@ -453,11 +462,26 @@ function addRecipient() {
   const username = match[1].trim(), tag = match[2];
   const full = `${username}#${tag}`;
   if (recipients.find(r=>r.full.toLowerCase()===full.toLowerCase())) { toastMsg(`${full} already added.`); input.value=''; return; }
+
+  if (!MOCK_MODE) {
+    if (!_wsReady) { toastMsg('⚠ Not connected to server.'); return; }
+    const addBtn = document.querySelector('.recipient-add-btn');
+    addBtn.disabled = true;
+    try {
+      const reply = await wsRequest({ type: 'check_user', username, tag_id: tag }, 'check_user_ack', 6000);
+      if (!reply.exists) { toastMsg(`⚠ User ${full} not found.`); input.focus(); return; }
+    } catch {
+      toastMsg('⚠ Could not verify user — check connection.'); return;
+    } finally {
+      addBtn.disabled = false;
+    }
+  }
+
   const id = Date.now() + Math.random();
   recipients.push({ id, username, tag, full });
-  renderRecipients(); input.value=''; toastMsg(`${full} added`);
+  renderRecipients(); _saveRecipients(); input.value=''; toastMsg(`${full} added`);
 }
-function removeRecipient(id) { recipients=recipients.filter(r=>r.id!==id); renderRecipients(); }
+function removeRecipient(id) { recipients=recipients.filter(r=>r.id!==id); renderRecipients(); _saveRecipients(); }
 function renderRecipients() {
   const list = document.getElementById('user-list');
   if (!recipients.length) {
@@ -513,6 +537,12 @@ async function confirmSend() {
   const toggles = document.querySelectorAll('.right-col .toggle input');
   const optionKeys = ['ip_filter','device_cert','track_views','time_of_day','limited_access','watermark','password'];
   toggles.forEach((t, i) => { if (t.checked) requirements[optionKeys[i]] = true; });
+
+  if (requirements.password && !_savedPasswordHash) {
+    toastMsg('⚠ Set a password or PIN before sending.');
+    document.getElementById('pin-modal').classList.add('open');
+    return;
+  }
   const tod = document.getElementById('tod-value').textContent;
   if (requirements.time_of_day && tod) requirements.time_of_day_window = tod;
   const la = parseInt(document.getElementById('la-value').textContent);
@@ -654,6 +684,23 @@ function renderIPList() {
 function saveIP() { closeModal('ip-modal'); toastMsg(ipList.length ? `✓ ${ipList.length} IP rule(s) saved` : 'IP list cleared'); }
 
 let currentPinTab='password', pinValue='', _savedPasswordHash = null;
+
+function onPasswordToggle(cb) {
+  if (cb.checked) {
+    document.getElementById('pin-modal').classList.add('open');
+  } else {
+    _savedPasswordHash = null;
+    toastMsg('Password/PIN disabled');
+  }
+}
+
+function cancelPinModal() {
+  closeModal('pin-modal');
+  if (!_savedPasswordHash) {
+    const cb = document.getElementById('password-toggle');
+    if (cb) cb.checked = false;
+  }
+}
 function switchPinTab(tab) {
   currentPinTab=tab;
   document.querySelectorAll('.pin-tab').forEach((b,i)=>b.classList.toggle('active',(i===0&&tab==='password')||(i===1&&tab==='pin')));
@@ -685,9 +732,10 @@ function savePinOrPassword() {
     toastMsg('✓ PIN saved'); setTimeout(()=>closeModal('pin-modal'),800);
   }
 }
-['ip-modal','cert-modal','pin-modal'].forEach(id=>{
+['ip-modal','cert-modal'].forEach(id=>{
   document.getElementById(id).addEventListener('click',function(e){if(e.target===this)closeModal(id);});
 });
+document.getElementById('pin-modal').addEventListener('click',function(e){if(e.target===this)cancelPinModal();});
 
 // ── Drag & drop ───────────────────────────────────────────────────────
 const overlay = document.getElementById('dropzone-overlay');

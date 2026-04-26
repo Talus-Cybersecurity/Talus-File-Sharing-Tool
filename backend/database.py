@@ -110,7 +110,14 @@ class Database:
             SELECT username FROM "User"
             WHERE username = %s""", (username, ))
         return self.schema.cur.fetchone() is not None
-        
+
+    def check_user_by_tag(self, username: str, tag_id: str) -> bool:
+        self._execute("""
+            SELECT 1 FROM "User"
+            WHERE username = %s AND tag_id = %s AND is_verified = TRUE
+        """, (username, tag_id))
+        return self.schema.cur.fetchone() is not None
+
     # Insert user account information into the database when a new user registers
     def get_public_key(self, username: str):
         self._execute("""

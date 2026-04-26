@@ -63,6 +63,7 @@ class FilePackage:
     file_size: Optional[str] = None
     uploaded_at: Any = field(default_factory=lambda: datetime.now(timezone.utc))
     delivered: bool = False
+    accepted: bool = False
     view_count: int = 0
 
 
@@ -282,6 +283,15 @@ async def handle_resend_verification(ws: WebSocketServerProtocol, data: Dict[str
         return
 
     await send_json(ws, {"type": "resend_verification_ack"})
+
+async def handle_check_user(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
+    username = (data.get("username") or "").strip()
+    tag_id   = (data.get("tag_id") or "").strip()
+    if not username or not tag_id:
+        await send_json(ws, {"type": "check_user_ack", "exists": False})
+        return
+    exists = db.check_user_by_tag(username, tag_id)
+    await send_json(ws, {"type": "check_user_ack", "exists": exists})
 
 async def handle_login(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
     username = data["username"]
@@ -550,6 +560,8 @@ async def handle_get_incoming_transfers(ws: WebSocketServerProtocol, data: Dict[
         view_count = pkg.view_count
         if pkg.delivered:
             status = "declined"
+        elif pkg.accepted:
+            status = "accepted"
         elif max_views is not None:
             try:
                 status = "expired" if view_count >= int(max_views) else "pending"
@@ -564,7 +576,7 @@ async def handle_get_incoming_transfers(ws: WebSocketServerProtocol, data: Dict[
             "tag": "",
             "time": time_str,
             "status": status,
-            "verified": False,
+            "verified": True,
             "passwordRequired": bool(requirements.get("password")),
             "passwordVerified": False,
             "timeRestricted": False,
@@ -713,7 +725,7 @@ async def handle_upload_package(ws: WebSocketServerProtocol, data: Dict[str, Any
             "tag": "",
             "time": "just now",
             "status": "pending",
-            "verified": False,
+            "verified": True,
             "passwordRequired": bool(requirements.get("password")),
             "passwordVerified": False,
             "timeRestricted": False,
@@ -795,8 +807,11 @@ async def handle_log_transfer_view(ws: WebSocketServerProtocol, data: Dict[str, 
 async def handle_transfer_response(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
     package_id = data.get("transfer_id")
     decision   = data.get("decision")
-    if package_id and package_id in packages and decision == "declined":
-        packages[package_id].delivered = True
+    if package_id and package_id in packages:
+        if decision == "declined":
+            packages[package_id].delivered = True
+        elif decision == "accepted":
+            packages[package_id].accepted = True
     await send_json(ws, {"type": "transfer_response_ack"})
 
 async def handle_delete_transfer(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
@@ -816,6 +831,38 @@ async def handle_delete_transfer(ws: WebSocketServerProtocol, data: Dict[str, An
     logging.info("Deleted package_id=%s", package_id)
     await send_json(ws, {"type": "delete_transfer_ack", "package_id": package_id})
 
+
+async def handle_verify_file_password(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
+    receiver_id = data.get("receiver_id", "")
+    package_id  = data.get("package_id", "")
+
+    package = packages.get(package_id)
+    if not package:
+        await send_json(ws, {"type": "verify_file_password_ack", "valid": False})
+        return
+
+    requirements = package.parsed_requirements or {}
+    if not requirements.get("password"):
+        await send_json(ws, {"type": "verify_file_password_ack", "valid": True})
+        return
+
+    session_key = receiver_session_keys.get(receiver_id)
+    if not session_key:
+        await send_json(ws, {"type": "error", "message": "No session key found."})
+        return
+
+    try:
+        receiver_metadata = json.loads(
+            aes_gcm_decrypt(session_key, decode_b64(data["encrypted_receiver_metadata_b64"])).decode("utf-8")
+        )
+    except Exception:
+        await send_json(ws, {"type": "verify_file_password_ack", "valid": False})
+        return
+
+    required_hash = requirements.get("password_hash", "")
+    provided_hash = receiver_metadata.get("password_hash", "")
+    valid = bool(provided_hash and provided_hash == required_hash)
+    await send_json(ws, {"type": "verify_file_password_ack", "valid": valid})
 
 async def handle_request_file_access(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> None:
     valid, reason = is_file_access_request(data)
@@ -983,6 +1030,10 @@ async def handle_message(ws: WebSocketServerProtocol, raw_message: str) -> None:
             await handle_delete_transfer(ws, data)
         elif msg_type == "request_file_access":
             await handle_request_file_access(ws, data)
+        elif msg_type == "verify_file_password":
+            await handle_verify_file_password(ws, data)
+        elif msg_type == "check_user":
+            await handle_check_user(ws, data)
         elif msg_type == "create_account":
             await handle_create_account(ws, data)
         elif msg_type == "login":

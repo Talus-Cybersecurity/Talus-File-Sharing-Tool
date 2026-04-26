@@ -320,8 +320,22 @@ document.addEventListener('click', function(e) {
 // ── Receive panel ─────────────────────────────────────────────────────
 let receiveActive = true, receiveItems = [], selectedReceiveId = null;
 
+function showConnecting() {
+  const dot = document.getElementById('receive-dot');
+  dot.classList.add('connecting');
+  dot.classList.remove('stopped');
+  document.getElementById('receive-status-text').textContent = 'Connecting to server…';
+  hideReceiveError();
+}
+
+function hideConnecting() {
+  document.getElementById('receive-dot').classList.remove('connecting');
+  if (receiveActive) document.getElementById('receive-status-text').textContent = 'Listening for incoming transfers…';
+}
+
 async function fetchTransfers() {
-  if (!_wsReady) { showReceiveError('Not connected to server. Retrying…'); setTimeout(fetchTransfers, 5000); return; }
+  if (!_wsReady) { showConnecting(); setTimeout(fetchTransfers, 3000); return; }
+  hideConnecting();
   try {
     const reply = await wsRequest(
       { type: 'get_incoming_transfers', client_id: currentUser.username },
@@ -419,19 +433,18 @@ async function selectReceiveItem(id) {
     showReceiveError(`Access restricted — "${item.sender}" limited to ${item.allowedWindow}.`);
     return;
   }
-  if (item.passwordRequired && !item.passwordVerified) {
-    openReceivePasswordModal(id); return;
+  if (!item.passwordRequired || item.passwordVerified) {
+    try {
+      await wsRequest(
+        { type: 'log_transfer_view', transfer_id: id, client_id: currentUser.username },
+        'log_transfer_view_ack'
+      );
+      receiveItems = receiveItems.map(i => i.id === id ? { ...i, viewCount: (i.viewCount || 0) + 1 } : i);
+    } catch { toastMsg('⚠ Could not log view — proceeding anyway.'); }
   }
-  try {
-    await wsRequest(
-      { type: 'log_transfer_view', transfer_id: id, client_id: currentUser.username },
-      'log_transfer_view_ack'
-    );
-    receiveItems = receiveItems.map(i => i.id === id ? { ...i, viewCount: (i.viewCount || 0) + 1 } : i);
-  } catch { toastMsg('⚠ Could not log view — proceeding anyway.'); }
   selectedReceiveId = id;
   renderReceiveQueue();
-  _renderTransferDetail(item);
+  _renderTransferDetail(receiveItems.find(i => i.id === id));
 }
 
 function _renderTransferDetail(item) {
@@ -484,7 +497,16 @@ function _renderTransferDetail(item) {
     ${item.status === 'pending' ? `
     <div class="receive-detail-actions">
       <button class="btn-decline" onclick="respondReceive('${item.id}','declined')">Decline</button>
-      <button class="btn-accept" onclick="respondReceive('${item.id}','accepted')">Accept &amp; Download</button>
+      ${item.passwordRequired && !item.passwordVerified
+        ? `<button class="btn-accept" onclick="openReceivePasswordModal('${item.id}')">Enter Password / PIN</button>`
+        : `<button class="btn-accept" onclick="respondReceive('${item.id}','accepted')">Accept &amp; Download</button>`
+      }
+    </div>` : item.status === 'accepted' ? `
+    <div class="receive-detail-actions">
+      ${item.passwordRequired && !item.passwordVerified
+        ? `<button class="btn-accept" onclick="openReceivePasswordModal('${item.id}')">Enter Password / PIN to Download</button>`
+        : `<button class="btn-accept" onclick="downloadTransfer('${item.id}')">Download Again</button>`
+      }
     </div>` : item.status === 'expired' ? `
     <div style="margin-top:16px;background:#fef2f2;border:1px solid #fca5a5;border-radius:var(--radius-sm);padding:12px 14px;font-size:13px;color:#991b1b;font-weight:600;">
       Access limit reached — this transfer is no longer accessible.
@@ -502,16 +524,23 @@ async function respondReceive(id, decision) {
       'transfer_response_ack'
     );
   } catch { toastMsg('⚠ Could not sync status to server.'); }
-  if (decision === 'accepted') downloadTransfer(id);
-  selectedReceiveId = null;
-  renderReceiveQueue(); updateReceiveBadge();
-  document.getElementById('receive-detail').innerHTML = `
-    <div class="receive-detail-empty">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 13h6M9 17h4"/></svg>
-      <p>Transfer ${decision}</p>
-      <small>Select another item from the queue</small>
-    </div>`;
-  toastMsg(decision === 'accepted' ? '✓ Transfer accepted — downloading…' : 'Transfer declined');
+
+  if (decision === 'accepted') {
+    renderReceiveQueue(); updateReceiveBadge();
+    _renderTransferDetail(receiveItems.find(i => i.id === id));
+    toastMsg('✓ Downloading…');
+    downloadTransfer(id);
+  } else {
+    selectedReceiveId = null;
+    renderReceiveQueue(); updateReceiveBadge();
+    document.getElementById('receive-detail').innerHTML = `
+      <div class="receive-detail-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 13h6M9 17h4"/></svg>
+        <p>Transfer declined</p>
+        <small>Select another item from the queue</small>
+      </div>`;
+    toastMsg('Transfer declined');
+  }
 }
 
 async function downloadTransfer(id) {
@@ -533,19 +562,14 @@ async function downloadTransfer(id) {
       'authorized_file_delivery',
       12000
     );
+    _pendingPasswordHash = null;
     await _triggerDownload(reply.encrypted_file_b64, reply.encrypted_file_key_b64, item);
     return true;
   } catch (err) {
     if (err.message === 'authorization_denied') {
-      if (_pendingPasswordHash) {
-        receiveItems = receiveItems.map(i => i.id === id ? { ...i, passwordVerified: false } : i);
-        _pendingPasswordHash = null;
-        openReceivePasswordModal(id);
-        setTimeout(() => { document.getElementById('receive-pw-error').textContent = 'Incorrect password. Please try again.'; }, 100);
-      } else {
-        toastMsg('⚠ Access limit reached for this transfer.');
-        setTimeout(fetchTransfers, 1000);
-      }
+      _pendingPasswordHash = null;
+      toastMsg('⚠ Access denied for this transfer.');
+      setTimeout(fetchTransfers, 1000);
     } else {
       toastMsg('⚠ Download failed — check console.');
       console.error('[TALUS] downloadTransfer error:', err);
@@ -620,12 +644,44 @@ async function submitReceivePassword() {
   const pw    = document.getElementById('receive-pw-input').value;
   const errEl = document.getElementById('receive-pw-error');
   if (!pw) { errEl.textContent = 'Please enter a password.'; return; }
+  errEl.textContent = '';
+
   const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
-  _pendingPasswordHash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2,'0')).join('');
-  receiveItems = receiveItems.map(i => i.id === pendingPasswordTransferId ? { ...i, passwordVerified: true } : i);
+  const hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2,'0')).join('');
+
+  const btn = document.querySelector('#receive-pw-modal .btn-primary');
+  btn.textContent = 'Verifying…'; btn.disabled = true;
+
   const tid = pendingPasswordTransferId;
+  try {
+    let encrypted_receiver_metadata_b64 = '';
+    if (!MOCK_MODE) {
+      await _handshakePromise;
+      const meta = { receiver_id: currentUser.username, timestamp: new Date().toISOString(), password_hash: hash };
+      const enc  = await _aesGcmEncrypt(_sessionKey, new TextEncoder().encode(JSON.stringify(meta)));
+      encrypted_receiver_metadata_b64 = btoa(String.fromCharCode(...enc));
+    }
+    const reply = await wsRequest(
+      { type: 'verify_file_password', receiver_id: currentUser.username, package_id: tid, encrypted_receiver_metadata_b64 },
+      'verify_file_password_ack', 8000
+    );
+    if (!reply.valid) {
+      errEl.textContent = 'Incorrect password. Please try again.';
+      document.getElementById('receive-pw-input').value = '';
+      document.getElementById('receive-pw-input').focus();
+      return;
+    }
+  } catch {
+    errEl.textContent = 'Could not verify — check connection.';
+    return;
+  } finally {
+    btn.textContent = 'Confirm'; btn.disabled = false;
+  }
+
+  _pendingPasswordHash = hash;
   closeReceivePasswordModal();
-  selectReceiveItem(tid);
+  receiveItems = receiveItems.map(i => i.id === tid ? { ...i, passwordVerified: true } : i);
+  _renderTransferDetail(receiveItems.find(i => i.id === tid));
 }
 document.getElementById('receive-pw-modal').addEventListener('click', function(e) {
   if (e.target === this) closeReceivePasswordModal();
