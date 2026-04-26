@@ -157,7 +157,9 @@ main{grid-area:main;overflow:hidden;display:flex;flex-direction:column;}
 .receive-status-bar{display:flex;align-items:center;gap:12px;background:var(--teal-dark);color:#fff;padding:13px 20px;border-radius:var(--radius-sm);flex-shrink:0;}
 .receive-status-dot{width:10px;height:10px;border-radius:50%;background:#4ade80;flex-shrink:0;box-shadow:0 0 0 3px rgba(74,222,128,0.25);animation:pulse 2s infinite;}
 .receive-status-dot.stopped{background:var(--border);box-shadow:none;animation:none;}
+.receive-status-dot.connecting{background:transparent;border:2px solid rgba(255,255,255,0.25);border-top-color:#fff;box-shadow:none;animation:spin 0.75s linear infinite;}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 3px rgba(74,222,128,0.25)}50%{box-shadow:0 0 0 6px rgba(74,222,128,0.08)}}
+@keyframes spin{to{transform:rotate(360deg)}}
 #receive-status-text{font-size:13px;font-weight:600;letter-spacing:0.03em;}
 .receive-status-badge{background:var(--teal-accent);color:#fff;font-family:'Space Mono',monospace;font-size:11px;padding:2px 9px;border-radius:20px;}
 .receive-toggle-btn{margin-left:auto;padding:7px 16px;background:rgba(255,255,255,0.15);border:1.5px solid rgba(255,255,255,0.3);border-radius:var(--radius-sm);color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.15s;}
