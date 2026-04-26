@@ -88,8 +88,8 @@
             </div>
             <div class="setting-row">
               <span class="setting-label">Time of day</span>
-              <span class="setting-value" id="tod-value" onclick="editTimeOfDay()">9:00 – 5:00</span>
-              <label class="toggle"><input type="checkbox" onchange="toastMsg('Time restriction '+togStr(this))"><span class="toggle-track"></span></label>
+              <span class="setting-value" id="tod-value" onclick="openTODModal()" style="cursor:pointer;">9:00 AM – 5:00 PM</span>
+              <label class="toggle"><input type="checkbox" id="tod-toggle" onchange="onTODToggle(this)"><span class="toggle-track"></span></label>
             </div>
             <div class="setting-row">
               <span class="setting-label">Limit Downloads</span>
@@ -205,6 +205,35 @@
       <div style="font-size:12px;margin-top:6px;color:var(--border);">Coming soon</div>
     </div>
     <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('cert-modal')">Close</button></div>
+  </div>
+</div>
+
+<!-- Time of Day Modal -->
+<div class="modal-overlay" id="tod-modal">
+  <div class="modal settings-modal">
+    <div class="modal-title">🕐 Time of Day Restriction</div>
+    <div class="field-group">
+      <div class="field-label">Start time</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:6px;">
+        <select id="tod-sh" style="flex:1;padding:9px 8px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:14px;background:var(--teal-pale);color:var(--text-main);outline:none;"></select>
+        <span style="font-weight:700;font-size:16px;color:var(--text-main);">:</span>
+        <select id="tod-sm" style="flex:1;padding:9px 8px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:14px;background:var(--teal-pale);color:var(--text-main);outline:none;"></select>
+        <select id="tod-sampm" style="flex:1;padding:9px 8px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:14px;background:var(--teal-pale);color:var(--text-main);outline:none;"><option>AM</option><option>PM</option></select>
+      </div>
+      <div class="field-label" style="margin-top:16px;">End time</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:6px;">
+        <select id="tod-eh" style="flex:1;padding:9px 8px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:14px;background:var(--teal-pale);color:var(--text-main);outline:none;"></select>
+        <span style="font-weight:700;font-size:16px;color:var(--text-main);">:</span>
+        <select id="tod-em" style="flex:1;padding:9px 8px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:14px;background:var(--teal-pale);color:var(--text-main);outline:none;"></select>
+        <select id="tod-eampm" style="flex:1;padding:9px 8px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:14px;background:var(--teal-pale);color:var(--text-main);outline:none;"><option>AM</option><option>PM</option></select>
+      </div>
+      <div class="field-label" style="margin-top:16px;">Time zone</div>
+      <select id="tod-tz" class="field-input" style="margin-top:6px;padding:9px 12px;width:100%;"></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('tod-modal')">Cancel</button>
+      <button class="btn-save" onclick="saveTOD()">Save</button>
+    </div>
   </div>
 </div>
 
@@ -543,8 +572,12 @@ async function confirmSend() {
     document.getElementById('pin-modal').classList.add('open');
     return;
   }
-  const tod = document.getElementById('tod-value').textContent;
-  if (requirements.time_of_day && tod) requirements.time_of_day_window = tod;
+  if (requirements.time_of_day) requirements.time_of_day_window = {
+    start:    `${_pad(_to24h(_todConfig.sh, _todConfig.sampm))}:${_pad(_todConfig.sm)}`,
+    end:      `${_pad(_to24h(_todConfig.eh, _todConfig.eampm))}:${_pad(_todConfig.em)}`,
+    timezone: _todConfig.tz,
+    display:  _formatTOD(_todConfig)
+  };
   const la = parseInt(document.getElementById('la-value').textContent);
   if (requirements.limited_access && !isNaN(la)) requirements.max_views = la;
   if (ipList.length) requirements.allowed_ips = ipList;
@@ -657,9 +690,80 @@ function openSetting(name) {
 }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 function togStr(el) { return el.checked ? 'enabled' : 'disabled'; }
-function editTimeOfDay() {
-  const v = prompt('Time range (e.g. 9:00 - 5:00):', document.getElementById('tod-value').textContent);
-  if (v) { document.getElementById('tod-value').textContent = v; toastMsg('Time of day updated'); }
+const _TOD_TIMEZONES = [
+  { v:'UTC',                  l:'UTC' },
+  { v:'America/New_York',     l:'Eastern (ET)' },
+  { v:'America/Chicago',      l:'Central (CT)' },
+  { v:'America/Denver',       l:'Mountain (MT)' },
+  { v:'America/Los_Angeles',  l:'Pacific (PT)' },
+  { v:'America/Anchorage',    l:'Alaska (AKT)' },
+  { v:'Pacific/Honolulu',     l:'Hawaii (HT)' },
+  { v:'America/Toronto',      l:'Toronto (ET)' },
+  { v:'America/Sao_Paulo',    l:'Brazil (BRT)' },
+  { v:'America/Mexico_City',  l:'Mexico City (CST)' },
+  { v:'Europe/London',        l:'London (GMT/BST)' },
+  { v:'Europe/Paris',         l:'Central Europe (CET)' },
+  { v:'Europe/Helsinki',      l:'Finland (EET)' },
+  { v:'Europe/Moscow',        l:'Moscow (MSK)' },
+  { v:'Africa/Cairo',         l:'Cairo (EET)' },
+  { v:'Asia/Dubai',           l:'Dubai (GST)' },
+  { v:'Asia/Kolkata',         l:'India (IST)' },
+  { v:'Asia/Shanghai',        l:'China (CST)' },
+  { v:'Asia/Tokyo',           l:'Japan (JST)' },
+  { v:'Asia/Singapore',       l:'Singapore (SGT)' },
+  { v:'Australia/Sydney',     l:'Sydney (AEST)' },
+  { v:'Pacific/Auckland',     l:'New Zealand (NZST)' },
+];
+let _todConfig = { sh:9, sm:0, sampm:'AM', eh:5, em:0, eampm:'PM', tz:'America/New_York' };
+
+function _todLabel(tz) { return (_TOD_TIMEZONES.find(t=>t.v===tz)||{l:tz}).l; }
+function _pad(n) { return String(n).padStart(2,'0'); }
+function _to24h(h, ampm) { return ampm==='AM' ? (h===12?0:h) : (h===12?12:h+12); }
+function _to12h(h24) { return { h: h24===0?12:h24>12?h24-12:h24, ampm: h24<12?'AM':'PM' }; }
+function _formatTOD(cfg) {
+  return `${cfg.sh}:${_pad(cfg.sm)} ${cfg.sampm} – ${cfg.eh}:${_pad(cfg.em)} ${cfg.eampm} · ${_todLabel(cfg.tz)}`;
+}
+
+function _initTODModal() {
+  const hs = document.getElementById('tod-sh'), he = document.getElementById('tod-eh');
+  const ms = document.getElementById('tod-sm'), me = document.getElementById('tod-em');
+  const tz = document.getElementById('tod-tz');
+  if (hs.children.length) return; // already built
+  for (let h=1;h<=12;h++) { hs.innerHTML+=`<option>${h}</option>`; he.innerHTML+=`<option>${h}</option>`; }
+  for (let m=0;m<60;m+=5) { const v=_pad(m); ms.innerHTML+=`<option>${v}</option>`; me.innerHTML+=`<option>${v}</option>`; }
+  _TOD_TIMEZONES.forEach(t => { tz.innerHTML+=`<option value="${t.v}">${t.l}</option>`; });
+}
+
+function openTODModal() {
+  _initTODModal();
+  document.getElementById('tod-sh').value    = _todConfig.sh;
+  document.getElementById('tod-sm').value    = _pad(_todConfig.sm);
+  document.getElementById('tod-sampm').value = _todConfig.sampm;
+  document.getElementById('tod-eh').value    = _todConfig.eh;
+  document.getElementById('tod-em').value    = _pad(_todConfig.em);
+  document.getElementById('tod-eampm').value = _todConfig.eampm;
+  document.getElementById('tod-tz').value    = _todConfig.tz;
+  document.getElementById('tod-modal').classList.add('open');
+}
+
+function saveTOD() {
+  _todConfig = {
+    sh:    parseInt(document.getElementById('tod-sh').value),
+    sm:    parseInt(document.getElementById('tod-sm').value),
+    sampm: document.getElementById('tod-sampm').value,
+    eh:    parseInt(document.getElementById('tod-eh').value),
+    em:    parseInt(document.getElementById('tod-em').value),
+    eampm: document.getElementById('tod-eampm').value,
+    tz:    document.getElementById('tod-tz').value,
+  };
+  document.getElementById('tod-value').textContent = _formatTOD(_todConfig);
+  closeModal('tod-modal');
+  toastMsg('Time of day restriction saved');
+}
+
+function onTODToggle(cb) {
+  if (cb.checked) openTODModal();
+  else toastMsg('Time of day restriction disabled');
 }
 function editLimitedAccess() {
   const v = prompt('Max access count:', document.getElementById('la-value').textContent);
@@ -732,7 +836,7 @@ function savePinOrPassword() {
     toastMsg('✓ PIN saved'); setTimeout(()=>closeModal('pin-modal'),800);
   }
 }
-['ip-modal','cert-modal'].forEach(id=>{
+['ip-modal','cert-modal','tod-modal'].forEach(id=>{
   document.getElementById(id).addEventListener('click',function(e){if(e.target===this)closeModal(id);});
 });
 document.getElementById('pin-modal').addEventListener('click',function(e){if(e.target===this)cancelPinModal();});
