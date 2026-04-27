@@ -231,3 +231,19 @@ main{grid-area:main;overflow:hidden;display:flex;flex-direction:column;}
 .verify-resend button{background:none;border:none;cursor:pointer;color:var(--teal-dark);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;padding:0;transition:opacity 0.15s;}
 .verify-resend button:disabled{opacity:0.4;cursor:default;}
 .verify-countdown{font-family:'Space Mono',monospace;font-size:12px;color:var(--text-muted);}
+
+/* Watermark settings */
+.watermark-modal{width:560px;}
+.watermark-note{background:var(--teal-pale);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;font-size:13px;line-height:1.45;color:var(--text-muted);}
+.watermark-upload-row{display:flex;gap:8px;margin-top:8px;align-items:center;}
+.watermark-range-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.watermark-range-row span:last-child{font-family:'Space Mono',monospace;font-size:12px;color:var(--text-muted);}
+.watermark-range{width:100%;accent-color:var(--teal-dark);}
+.watermark-position-grid{display:grid;grid-template-columns:repeat(3,34px);grid-template-rows:repeat(3,34px);gap:6px;margin-top:8px;}
+.watermark-position-grid button{border:1.5px solid var(--border);background:var(--teal-pale);border-radius:8px;cursor:pointer;position:relative;}
+.watermark-position-grid button::after{content:'';position:absolute;inset:10px;border-radius:50%;background:var(--border);}
+.watermark-position-grid button.active{background:var(--teal-dark);border-color:var(--teal-dark);}
+.watermark-position-grid button.active::after{background:#fff;}
+.watermark-preview{min-height:170px;max-height:260px;overflow:auto;background:var(--teal-pale);border:1.5px solid var(--border);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;text-align:center;padding:12px;color:var(--text-muted);font-size:13px;}
+.watermark-preview img{max-width:100%;border-radius:8px;display:block;}
+.watermark-preview-caption{font-size:12px;color:var(--text-muted);font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;}
