@@ -40,6 +40,13 @@ class Database:
         row = self.schema.cur.fetchone()
         return row[0] if row else None # returns user's user_id
 
+    def get_tag_id(self, username: str):
+        self._execute("""
+            SELECT tag_id FROM public."User"
+            WHERE username = %s""", (username,))
+        row = self.schema.cur.fetchone()
+        return row[0] if row else None
+
     def get_file_policy(self, file_id: str): # return FilePolicy row given the file_id
         self._execute("""
             SELECT ip_address, access_count, hour_range,
