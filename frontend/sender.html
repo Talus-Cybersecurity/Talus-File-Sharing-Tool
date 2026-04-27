@@ -332,7 +332,7 @@
 <script>
 // ── Set to false when the real server is running ──────────────────────
 const MOCK_MODE = false;
-const WS_URL    = 'wss://localhost:8765';
+const WS_URL    = 'ws://localhost:8765';
 
 // ── Load user from sessionStorage or use mock ─────────────────────────
 let currentUser;
@@ -350,7 +350,7 @@ document.getElementById('profile-display-name').textContent = currentUser.userna
 document.getElementById('profile-display-user').textContent = '@' + currentUser.username.toLowerCase().replace(/\s+/g,'');
 
 // ── Crypto helpers ────────────────────────────────────────────────────
-let _privateKey = null, _serverPublicKeyPem = null, _senderSessionKey = null, _handshakePromise = null;
+let _privateKey = null, _serverPublicKeyPem = null, _handshakePromise = null;
 
 function _pemToDer(pem) {
   const b64 = pem.replace(/-----[^-]+-----/g, '').replace(/\s/g, '');
@@ -387,8 +387,7 @@ async function _doHandshake() {
 
   const skReply = await wsRequest({ type: 'create_session_key', client_id: currentUser.username }, 'session_key_created');
   const encKeyBytes = Uint8Array.from(atob(skReply.encrypted_session_key_b64), c => c.charCodeAt(0));
-  const rawKey = await crypto.subtle.decrypt({ name: 'RSA-OAEP' }, _privateKey, encKeyBytes);
-  _senderSessionKey = await crypto.subtle.importKey('raw', rawKey, { name: 'AES-GCM' }, false, ['encrypt']);
+  await crypto.subtle.decrypt({ name: 'RSA-OAEP' }, _privateKey, encKeyBytes);
 
   _wsReady = true;
 }
@@ -492,50 +491,26 @@ function attachFolder(e) {
   const files = Array.from(e.target.files);
   if (!files.length) return;
   const folderName = files[0].webkitRelativePath.split('/')[0];
-  addItem(folderName, 'folder', null, null, files);
+  addItem(folderName, 'folder');
   e.target.value = '';
 }
 
 async function pasteClipboard() {
   try {
-    let handled = false;
-    if (navigator.clipboard.read) {
-      const items = await navigator.clipboard.read();
-      for (const clipItem of items) {
-        const imageType = clipItem.types.find(t => t.startsWith('image/'));
-        if (imageType) {
-          const blob = await clipItem.getType(imageType);
-          const ext = (imageType.split('/')[1] || 'png').split('+')[0];
-          const file = new File([blob], `clipboard.${ext}`, { type: imageType });
-          addItem(file.name, 'file', file);
-          handled = true;
-          break;
-        }
-        if (clipItem.types.includes('text/plain')) {
-          const blob = await clipItem.getType('text/plain');
-          const text = await blob.text();
-          if (!text.trim()) continue;
-          const file = new File([text.trim()], 'clipboard.txt', { type: 'text/plain' });
-          addItem(file.name, 'file', file);
-          handled = true;
-          break;
-        }
-      }
-    }
-    if (!handled) {
-      const text = await navigator.clipboard.readText();
-      if (!text.trim()) { toastMsg('Clipboard is empty.'); return; }
-      const file = new File([text.trim()], 'clipboard.txt', { type: 'text/plain' });
-      addItem(file.name, 'file', file);
-    }
+    const text = await navigator.clipboard.readText();
+    if (!text.trim()) { toastMsg('Clipboard is empty or not text.'); return; }
+    const preview = '[Clipboard] ' + text.trim().slice(0,30) + (text.length > 30 ? '…' : '');
+    addItem(preview, 'text', null, text.trim());
   } catch(e) { toastMsg('Clipboard access denied — check browser permissions.'); }
 }
 
-function addItem(name, type, fileObj, fullText, folderFiles) {
+function addItem(name, type, fileObj, fullText) {
   const id = Date.now() + Math.random();
-  attachedItems.push({ id, name, type, fileObj: fileObj||null, fullText: fullText||null, folderFiles: folderFiles||null });
+  attachedItems.push({ id, name, type, fileObj: fileObj||null, fullText: fullText||null });
   renderAttached();
   toastMsg(`"${name}" attached`);
+  const wmToggle = document.getElementById('watermark-toggle');
+  if (wmToggle && wmToggle.checked && fileObj && _isSupportedImageFile(fileObj)) refreshWatermarkPreview();
 }
 function removeItem(id) { attachedItems = attachedItems.filter(i => i.id !== id); renderAttached(); }
 function renderAttached() {
@@ -569,7 +544,6 @@ async function addRecipient() {
   if (!match) { toastMsg('Format must be username#0000'); input.focus(); return; }
   const username = match[1].trim(), tag = match[2];
   const full = `${username}#${tag}`;
-  if (username.toLowerCase() === currentUser.username.toLowerCase() && tag === currentUser.tag) { toastMsg("You can't send to yourself."); input.value=''; return; }
   if (recipients.find(r=>r.full.toLowerCase()===full.toLowerCase())) { toastMsg(`${full} already added.`); input.value=''; return; }
 
   if (!MOCK_MODE) {
@@ -616,23 +590,18 @@ function openConfirmModal(id) {
   document.getElementById('confirm-tag').textContent    = '#' + r.tag;
   document.getElementById('confirm-items-list').innerHTML = attachedItems.map(item =>
     `<div class="confirm-item-chip"><span>${item.type==='folder'?'📁':item.type==='text'?'📝':'📄'}</span><span>${item.name}</span></div>`).join('');
-  const _optionMeta = {
-    ip_filter:      { label:'IP Filter',           icon:'🌐', value:() => { const t=ipPolicy.allow.length+ipPolicy.block.length; return t ? `${ipPolicy.default==='block'?'Block all':'Allow all'}, ${t} rule${t>1?'s':''}` : `Default ${ipPolicy.default}`; } },
-    device_cert:    { label:'Device Certification', icon:'🔒', value:() => null },
-    view_only:      { label:'View Only',            icon:'👁', value:() => null },
-    limit_views:    { label:'↳ Limit File Views',   icon:'🔢', value:() => document.getElementById('view-limit-value').textContent+' max' },
-    time_of_day:    { label:'Time of Day',          icon:'🕐', value:() => document.getElementById('tod-value').textContent },
-    limited_access: { label:'Limit Downloads',      icon:'🔢', value:() => document.getElementById('la-value').textContent+' max' },
-    watermark:      { label:'Watermark',            icon:'💧', value:() => null },
-    password:       { label:'Password / PIN',       icon:'🔑', value:() => null },
-  };
+  const labels = ['IP Filter','Device Certification','Track File Views','Time of Day','Limit Downloads','Watermark','Password / PIN'];
+  const icons  = ['🌐','🔒','👁','🕐','🔢','💧','🔑'];
+  const values = [
+    ipList.length ? ipList.slice(0,2).join(', ')+(ipList.length>2?'…':'') : null,
+    null, null,
+    document.getElementById('tod-value').textContent,
+    document.getElementById('la-value').textContent+' views max',
+    document.getElementById('watermark-value')?.textContent || 'Default', null
+  ];
+  const toggles = document.querySelectorAll('.right-col .toggle input');
   const active = [];
-  document.querySelectorAll('.right-col .toggle input[data-key]').forEach(t => {
-    if (t.checked) {
-      const m = _optionMeta[t.dataset.key];
-      if (m) active.push({ label: m.label, icon: m.icon, value: m.value() });
-    }
-  });
+  toggles.forEach((t,i) => { if (t.checked) active.push({ label:labels[i], icon:icons[i], value:values[i] }); });
   const optEl = document.getElementById('confirm-options-list');
   optEl.innerHTML = active.length
     ? active.map(o=>`<div class="confirm-option-chip"><span>${o.icon}</span><span>${o.label}</span>${o.value?`<span class="confirm-option-value">${o.value}</span>`:''}</div>`).join('')
@@ -648,13 +617,18 @@ async function confirmSend() {
   if (!_wsReady) { toastMsg('⚠ Not connected to server.'); return; }
 
   const requirements = {};
-  document.querySelectorAll('.right-col .toggle input[data-key]').forEach(t => {
-    if (t.checked) requirements[t.dataset.key] = true;
-  });
+  const toggles = document.querySelectorAll('.right-col .toggle input');
+  const optionKeys = ['ip_filter','device_cert','track_views','time_of_day','limited_access','watermark','password'];
+  toggles.forEach((t, i) => { if (t.checked) requirements[optionKeys[i]] = true; });
 
   if (requirements.password && !_savedPasswordHash) {
     toastMsg('⚠ Set a password or PIN before sending.');
     document.getElementById('pin-modal').classList.add('open');
+    return;
+  }
+  if (requirements.watermark && !attachedItems.some(i => i.fileObj && _isSupportedImageFile(i.fileObj))) {
+    toastMsg('⚠ Watermark only applies to PNG/JPG images.');
+    openWatermarkModal();
     return;
   }
   if (requirements.time_of_day) requirements.time_of_day_window = {
@@ -665,10 +639,15 @@ async function confirmSend() {
   };
   const la = parseInt(document.getElementById('la-value').textContent);
   if (requirements.limited_access && !isNaN(la)) requirements.max_views = la;
-  const vl = parseInt(document.getElementById('view-limit-value').textContent);
-  if (requirements.limit_views && !isNaN(vl)) requirements.max_views = vl;
-  if (requirements.ip_filter) requirements.ip_policy = { default: ipPolicy.default, allow: [...ipPolicy.allow], block: [...ipPolicy.block] };
+  if (ipList.length) requirements.allowed_ips = ipList;
   if (requirements.password && _savedPasswordHash) requirements.password_hash = _savedPasswordHash;
+  if (requirements.watermark) requirements.watermark_details = {
+    applied: true,
+    opacity: _watermarkConfig.opacity,
+    size: _watermarkConfig.size,
+    position: _watermarkConfig.position,
+    watermark_file: _watermarkConfig.fileName
+  };
 
   let encrypted_file_b64, encrypted_requirements_b64, encrypted_file_key_b64 = '';
 
@@ -678,35 +657,28 @@ async function confirmSend() {
   } else {
     try { await _handshakePromise; } catch { toastMsg('⚠ Key exchange failed.'); return; }
 
-    // Encrypt requirements with sender's AES session key (avoids RSA ~190-byte limit)
+    // Encrypt requirements with server's RSA public key
     const reqBytes = new TextEncoder().encode(JSON.stringify(requirements));
-    const encReq = await _aesGcmEncrypt(_senderSessionKey, reqBytes);
-    let encReqBinary = '';
-    for (let i = 0; i < encReq.length; i += 8192)
-      encReqBinary += String.fromCharCode(...encReq.subarray(i, i + 8192));
-    encrypted_requirements_b64 = btoa(encReqBinary);
+    encrypted_requirements_b64 = await _encryptWithPublicKeyPem(_serverPublicKeyPem, reqBytes);
 
     // Read actual file content into a structured payload
-    const _readFile = async (f, name) => {
-      const buf = await f.arrayBuffer();
-      const bytes = new Uint8Array(buf);
-      let binary = '';
-      const chunk = 8192;
-      for (let i = 0; i < bytes.length; i += chunk)
-        binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-      return { name, type: 'file', content: btoa(binary), mime: f.type || 'application/octet-stream' };
-    };
-    const payloadParts = await Promise.all(attachedItems.map(async item => {
+    const payload = await Promise.all(attachedItems.map(async item => {
       if (item.type === 'text') {
-        return [{ name: item.name, type: 'text', content: item.fullText || item.name }];
-      } else if (item.type === 'folder' && item.folderFiles) {
-        return Promise.all(item.folderFiles.map(f => _readFile(f, f.webkitRelativePath || f.name)));
+        return { name: item.name, type: 'text', content: item.fullText || item.name };
       } else if (item.fileObj) {
-        return [await _readFile(item.fileObj, item.name)];
+        const outgoingFile = (requirements.watermark && _isSupportedImageFile(item.fileObj))
+          ? await _makeWatermarkedFile(item.fileObj)
+          : item.fileObj;
+        const buf = await outgoingFile.arrayBuffer();
+        const bytes = new Uint8Array(buf);
+        let binary = '';
+        const chunk = 8192;
+        for (let i = 0; i < bytes.length; i += chunk)
+          binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+        return { name: outgoingFile.name, original_name: item.name, type: 'file', content: btoa(binary), mime: outgoingFile.type || 'application/octet-stream', watermarked: Boolean(requirements.watermark && _isSupportedImageFile(item.fileObj)) };
       }
-      return [];
+      return { name: item.name, type: item.type };
     }));
-    const payload = payloadParts.flat();
 
     // Encrypt payload with a random AES-GCM key
     const fileAesKey = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
@@ -729,6 +701,13 @@ async function confirmSend() {
   }
 
   try {
+    const firstItem = attachedItems[0];
+    const displayFileName = (requirements.watermark && firstItem?.fileObj && _isSupportedImageFile(firstItem.fileObj))
+      ? _watermarkedName(firstItem.name)
+      : (firstItem?.name || 'transfer');
+    const displayFileType = (requirements.watermark && firstItem?.fileObj && _isSupportedImageFile(firstItem.fileObj))
+      ? 'image/png'
+      : (firstItem?.fileObj?.type || 'application/octet-stream');
     const reply = await wsRequest(
       {
         type: 'upload_package',
@@ -737,17 +716,9 @@ async function confirmSend() {
         encrypted_file_b64,
         encrypted_requirements_b64,
         encrypted_file_key_b64,
-        file_name: attachedItems[0]?.name || 'transfer',
-        file_type: attachedItems[0]?.fileObj?.type || 'application/octet-stream',
-        file_size: String(attachedItems.reduce((s, i) => {
-          if (i.type === 'folder' && i.folderFiles) return s + i.folderFiles.reduce((fs, f) => fs + f.size, 0);
-          return s + (i.fileObj?.size || 0);
-        }, 0)) + ' bytes',
-        files_meta: attachedItems.flatMap(i => {
-          if (i.type === 'folder' && i.folderFiles)
-            return i.folderFiles.map(f => ({ name: f.webkitRelativePath || f.name, mime: f.type || 'application/octet-stream', size: f.size }));
-          return [{ name: i.name, mime: i.fileObj?.type || (i.type === 'text' ? 'text/plain' : 'application/octet-stream'), size: i.fileObj?.size || 0 }];
-        })
+        file_name: displayFileName,
+        file_type: displayFileType,
+        file_size: String(attachedItems.reduce((s, i) => s + (i.fileObj?.size || 0), 0)) + ' bytes'
       },
       'upload_package_ack',
       12000
@@ -776,8 +747,16 @@ function openPreview(id) {
     reader.readAsText(item.fileObj);
     body.textContent = 'Loading…';
   } else if (item.fileObj && item.fileObj.type.startsWith('image/')) {
-    const url = URL.createObjectURL(item.fileObj);
-    body.innerHTML = `<img src="${url}" style="max-width:100%;border-radius:6px;" onload="URL.revokeObjectURL(this.src)"/>`;
+    const wmToggle = document.getElementById('watermark-toggle');
+    if (wmToggle && wmToggle.checked && _isSupportedImageFile(item.fileObj)) {
+      body.textContent = 'Rendering watermarked preview…';
+      _watermarkedDataUrl(item.fileObj).then(url => {
+        body.innerHTML = `<div class="watermark-preview-caption">Watermarked version that will be sent</div><img src="${url}" style="max-width:100%;border-radius:6px;" onload="URL.revokeObjectURL(this.src)"/>`;
+      }).catch(() => { body.textContent = 'Could not render watermarked preview.'; });
+    } else {
+      const url = URL.createObjectURL(item.fileObj);
+      body.innerHTML = `<img src="${url}" style="max-width:100%;border-radius:6px;" onload="URL.revokeObjectURL(this.src)"/>`;
+    }
   } else {
     body.textContent = item.fileObj
       ? `File: ${item.fileObj.name}\nSize: ${(item.fileObj.size/1024).toFixed(1)} KB\nType: ${item.fileObj.type||'unknown'}`
@@ -795,6 +774,40 @@ function openSetting(name) {
 }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 function togStr(el) { return el.checked ? 'enabled' : 'disabled'; }
+
+// ── Watermark helpers ─────────────────────────────────────────────────
+const DEFAULT_WATERMARK_SRC = 'assets/TalusWatermark.png';
+let _watermarkConfig = { src: DEFAULT_WATERMARK_SRC, fileName: 'TalusWatermark.png', isDefault: true, opacity: 0.35, size: 0.35, position: 'center' };
+function _isSupportedImageFile(file) { if (!file) return false; const name=(file.name||'').toLowerCase(); return file.type==='image/png'||file.type==='image/jpeg'||name.endsWith('.png')||name.endsWith('.jpg')||name.endsWith('.jpeg'); }
+function _fileToDataUrl(file) { return new Promise((resolve,reject)=>{ const reader=new FileReader(); reader.onload=e=>resolve(e.target.result); reader.onerror=()=>reject(new Error('Could not read image.')); reader.readAsDataURL(file); }); }
+function _loadImage(src) { return new Promise((resolve,reject)=>{ const img=new Image(); img.onload=()=>resolve(img); img.onerror=()=>reject(new Error('Could not load watermark/image.')); img.src=src; }); }
+function _watermarkedName(originalName) { return `${(originalName||'image').replace(/\.[^.]+$/, '')}_watermarked.png`; }
+function _watermarkXY(canvasW, canvasH, wmW, wmH, position) { const margin=Math.max(12,Math.round(Math.min(canvasW,canvasH)*0.035)); const left=margin, centerX=(canvasW-wmW)/2, right=canvasW-wmW-margin; const top=margin, centerY=(canvasH-wmH)/2, bottom=canvasH-wmH-margin; const map={'top-left':[left,top],'top-center':[centerX,top],'top-right':[right,top],'middle-left':[left,centerY],'center':[centerX,centerY],'middle-right':[right,centerY],'bottom-left':[left,bottom],'bottom-center':[centerX,bottom],'bottom-right':[right,bottom]}; return map[position] || map.center; }
+async function _makeWatermarkedBlob(file) {
+  if (!_isSupportedImageFile(file)) return null;
+  const [baseImg, watermarkImg] = await Promise.all([_loadImage(await _fileToDataUrl(file)), _loadImage(_watermarkConfig.src)]);
+  const canvas=document.createElement('canvas'); canvas.width=baseImg.naturalWidth||baseImg.width; canvas.height=baseImg.naturalHeight||baseImg.height;
+  const ctx=canvas.getContext('2d'); ctx.drawImage(baseImg,0,0,canvas.width,canvas.height);
+  const maxW=canvas.width*_watermarkConfig.size, maxH=canvas.height*_watermarkConfig.size;
+  const scale=Math.min(maxW/watermarkImg.width, maxH/watermarkImg.height);
+  const wmW=Math.max(1,watermarkImg.width*scale), wmH=Math.max(1,watermarkImg.height*scale);
+  const [x,y]=_watermarkXY(canvas.width,canvas.height,wmW,wmH,_watermarkConfig.position);
+  ctx.save(); ctx.globalAlpha=_watermarkConfig.opacity; ctx.drawImage(watermarkImg,x,y,wmW,wmH); ctx.restore();
+  return await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
+}
+async function _makeWatermarkedFile(file) { const blob=await _makeWatermarkedBlob(file); return blob ? new File([blob], _watermarkedName(file.name), {type:'image/png', lastModified:Date.now()}) : file; }
+async function _watermarkedDataUrl(file) { const blob=await _makeWatermarkedBlob(file); return blob ? URL.createObjectURL(blob) : null; }
+function _firstAttachedImage() { return attachedItems.find(i=>i.fileObj&&_isSupportedImageFile(i.fileObj)); }
+function updateWatermarkLabel() { const label=document.getElementById('watermark-value'); if(label) label.textContent=`${_watermarkConfig.isDefault?'Default':'Custom'} · ${Math.round(_watermarkConfig.opacity*100)}%`; const fileLabel=document.getElementById('watermark-file-label'); if(fileLabel) fileLabel.textContent=(_watermarkConfig.isDefault?'Default: ':'Custom: ')+_watermarkConfig.fileName; }
+async function refreshWatermarkPreview() { const box=document.getElementById('watermark-preview'); if(!box) return; const item=_firstAttachedImage(); if(!item){box.textContent='Attach/select a PNG or JPG to preview the watermark.';return;} box.textContent='Rendering preview…'; try{ const url=await _watermarkedDataUrl(item.fileObj); box.innerHTML=`<img src="${url}" alt="Watermarked preview" onload="URL.revokeObjectURL(this.src)">`; } catch(err){ console.warn('[Watermark] preview failed:',err); box.textContent='Could not render watermark preview.'; } }
+function updateWatermarkConfigFromControls() { const op=document.getElementById('watermark-opacity'), sz=document.getElementById('watermark-size'); if(op)_watermarkConfig.opacity=Number(op.value)/100; if(sz)_watermarkConfig.size=Number(sz.value)/100; document.getElementById('watermark-opacity-label').textContent=Math.round(_watermarkConfig.opacity*100)+'%'; document.getElementById('watermark-size-label').textContent=Math.round(_watermarkConfig.size*100)+'%'; updateWatermarkLabel(); refreshWatermarkPreview(); }
+function setWatermarkPosition(pos) { _watermarkConfig.position=pos; document.querySelectorAll('#watermark-position-grid button').forEach(btn=>btn.classList.toggle('active',btn.dataset.pos===pos)); refreshWatermarkPreview(); }
+async function handleWatermarkUpload(e) { const file=e.target.files&&e.target.files[0]; e.target.value=''; if(!file)return; if(!_isSupportedImageFile(file)){toastMsg('Watermark must be PNG or JPG.');return;} _watermarkConfig.src=await _fileToDataUrl(file); _watermarkConfig.fileName=file.name; _watermarkConfig.isDefault=false; updateWatermarkLabel(); refreshWatermarkPreview(); }
+function resetWatermarkImage() { _watermarkConfig.src=DEFAULT_WATERMARK_SRC; _watermarkConfig.fileName='TalusWatermark.png'; _watermarkConfig.isDefault=true; updateWatermarkLabel(); refreshWatermarkPreview(); }
+function openWatermarkModal() { document.getElementById('watermark-opacity').value=Math.round(_watermarkConfig.opacity*100); document.getElementById('watermark-size').value=Math.round(_watermarkConfig.size*100); document.getElementById('watermark-opacity-label').textContent=Math.round(_watermarkConfig.opacity*100)+'%'; document.getElementById('watermark-size-label').textContent=Math.round(_watermarkConfig.size*100)+'%'; document.querySelectorAll('#watermark-position-grid button').forEach(btn=>btn.classList.toggle('active',btn.dataset.pos===_watermarkConfig.position)); updateWatermarkLabel(); document.getElementById('watermark-modal').classList.add('open'); refreshWatermarkPreview(); }
+function saveWatermarkSettings() { updateWatermarkConfigFromControls(); closeModal('watermark-modal'); toastMsg('Watermark settings saved'); }
+function onWatermarkToggle(cb) { if(cb.checked){ if(!attachedItems.some(i=>i.fileObj&&_isSupportedImageFile(i.fileObj))) toastMsg('Watermark will apply once you attach a PNG/JPG image.'); openWatermarkModal(); } else toastMsg('Watermark disabled'); }
+
 const _TOD_TIMEZONES = [
   { v:'UTC',                  l:'UTC' },
   { v:'America/New_York',     l:'Eastern (ET)' },
@@ -819,7 +832,7 @@ const _TOD_TIMEZONES = [
   { v:'Australia/Sydney',     l:'Sydney (AEST)' },
   { v:'Pacific/Auckland',     l:'New Zealand (NZST)' },
 ];
-let _todConfig = { sh:9, sm:0, sampm:'AM', eh:5, em:0, eampm:'PM', tz:'America/Los_Angeles' };
+let _todConfig = { sh:9, sm:0, sampm:'AM', eh:5, em:0, eampm:'PM', tz:'America/New_York' };
 
 function _todLabel(tz) { return (_TOD_TIMEZONES.find(t=>t.v===tz)||{l:tz}).l; }
 function _pad(n) { return String(n).padStart(2,'0'); }
@@ -866,20 +879,6 @@ function saveTOD() {
   toastMsg('Time of day restriction saved');
 }
 
-function onViewOnlyToggle(cb) {
-  const row = document.getElementById('track-views-row');
-  row.style.display = cb.checked ? 'flex' : 'none';
-  if (!cb.checked) row.querySelector('input[data-key="limit_views"]').checked = false;
-  toastMsg('View Only ' + togStr(cb));
-}
-function editViewLimit() {
-  const v = prompt('Max view count:', document.getElementById('view-limit-value').textContent);
-  const n = parseInt(v);
-  if (v !== null && !isNaN(n) && n > 0) {
-    document.getElementById('view-limit-value').textContent = n;
-    toastMsg('View limit updated');
-  }
-}
 function onTODToggle(cb) {
   if (cb.checked) openTODModal();
   else toastMsg('Time of day restriction disabled');
@@ -889,35 +888,22 @@ function editLimitedAccess() {
   if (v && !isNaN(v)) { document.getElementById('la-value').textContent = v; toastMsg('Limited access updated'); }
 }
 
-let ipPolicy = { default: 'allow', allow: [], block: [] };
-const _ipRe = /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/;
-function setIPDefault(val) {
-  ipPolicy.default = val;
-  document.getElementById('ip-default-allow').classList.toggle('active', val === 'allow');
-  document.getElementById('ip-default-block').classList.toggle('active', val === 'block');
-  document.getElementById('ip-policy-hint').textContent = val === 'allow'
-    ? 'Allow everyone except IPs in the block list.'
-    : 'Block everyone except IPs in the allow list.';
-}
-function addIPRule(list) {
-  const input = document.getElementById(`ip-${list}-input`);
-  const val = input.value.trim();
+let ipList = [];
+function addIP() {
+  const input = document.getElementById('ip-input');
+  const val   = input.value.trim();
   if (!val) return;
-  if (!_ipRe.test(val)) { toastMsg('Invalid IP or CIDR format.'); return; }
-  if (ipPolicy[list].includes(val)) { toastMsg('Already in list.'); input.value = ''; return; }
-  ipPolicy[list].push(val); input.value = ''; renderIPList(list);
+  if (!/^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/.test(val)) { toastMsg('Invalid IP or CIDR format.'); return; }
+  if (ipList.includes(val)) { toastMsg('Already in list.'); input.value=''; return; }
+  ipList.push(val); input.value=''; renderIPList();
 }
-function removeIPRule(list, val) { ipPolicy[list] = ipPolicy[list].filter(i => i !== val); renderIPList(list); }
-function renderIPList(list) {
-  const el = document.getElementById(`ip-${list}-list`);
-  if (!ipPolicy[list].length) { el.innerHTML = `<div style="color:var(--text-muted);font-size:13px;padding:8px 4px;">No entries.</div>`; return; }
-  el.innerHTML = ipPolicy[list].map(ip => `<div class="ip-chip"><span>${ip}</span><button onclick="removeIPRule('${list}','${ip}')">×</button></div>`).join('');
+function removeIP(val) { ipList = ipList.filter(i=>i!==val); renderIPList(); }
+function renderIPList() {
+  const el = document.getElementById('ip-list');
+  if (!ipList.length) { el.innerHTML=`<div style="color:var(--text-muted);font-size:13px;padding:8px 4px;">No IPs added yet.</div>`; return; }
+  el.innerHTML = ipList.map(ip=>`<div class="ip-chip"><span>${ip}</span><button onclick="removeIP('${ip}')">×</button></div>`).join('');
 }
-function saveIP() {
-  const total = ipPolicy.allow.length + ipPolicy.block.length;
-  closeModal('ip-modal');
-  toastMsg(total ? `✓ IP policy saved (${total} rule${total > 1 ? 's' : ''})` : `✓ IP filter active — default ${ipPolicy.default}`);
-}
+function saveIP() { closeModal('ip-modal'); toastMsg(ipList.length ? `✓ ${ipList.length} IP rule(s) saved` : 'IP list cleared'); }
 
 let currentPinTab='password', pinValue='', _savedPasswordHash = null;
 
@@ -968,7 +954,7 @@ function savePinOrPassword() {
     toastMsg('✓ PIN saved'); setTimeout(()=>closeModal('pin-modal'),800);
   }
 }
-['ip-modal','cert-modal','tod-modal'].forEach(id=>{
+['ip-modal','cert-modal','tod-modal','watermark-modal'].forEach(id=>{
   document.getElementById(id).addEventListener('click',function(e){if(e.target===this)closeModal(id);});
 });
 document.getElementById('pin-modal').addEventListener('click',function(e){if(e.target===this)cancelPinModal();});
@@ -993,10 +979,6 @@ function toastMsg(msg) {
   toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
 }
 
-window.addEventListener('pageshow', () => {
-  const vo = document.getElementById('view-only-toggle');
-  if (vo) document.getElementById('track-views-row').style.display = vo.checked ? 'flex' : 'none';
-});
 window.addEventListener('beforeunload', wsDisconnect);
 </script>
 </body>
