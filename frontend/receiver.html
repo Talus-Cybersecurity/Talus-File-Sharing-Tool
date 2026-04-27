@@ -6,6 +6,7 @@
   <title>TALUS — Receive</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="styles.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
 
@@ -97,6 +98,15 @@
   </div>
 </div>
 
+<!-- View File Modal -->
+<div class="modal-overlay" id="view-file-modal">
+  <div class="modal" style="width:720px;max-height:82vh;display:flex;flex-direction:column;gap:0;">
+    <div class="modal-title" id="view-file-title" style="flex-shrink:0;">📄 Viewing File</div>
+    <div id="view-file-content" style="flex:1;overflow-y:auto;padding:4px 2px 16px;"></div>
+    <div class="modal-actions" style="flex-shrink:0;"><button class="btn-cancel" onclick="closeViewModal()">Close</button></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -119,6 +129,8 @@ const MOCK_TRANSFERS = [
     timeRestricted: true,
     todDisplay: '9:00 AM – 5:00 PM · Eastern (ET)',
     withinAllowedWindow: true,
+    viewOnly: false,
+    trackViews: false,
     files: [
       { name: 'report.pdf', size: '1.2 MB', type: 'PDF' },
       { name: 'notes.txt', size: '4 KB', type: 'TXT' }
@@ -140,6 +152,8 @@ const MOCK_TRANSFERS = [
     timeRestricted: false,
     todDisplay: '',
     withinAllowedWindow: true,
+    viewOnly: true,
+    trackViews: true,
     files: [
       { name: 'design.png', size: '3.4 MB', type: 'PNG' }
     ],
@@ -160,6 +174,8 @@ const MOCK_TRANSFERS = [
     timeRestricted: false,
     todDisplay: '',
     withinAllowedWindow: true,
+    viewOnly: false,
+    trackViews: false,
     files: [
       { name: 'contract.docx', size: '248 KB', type: 'DOCX' }
     ],
@@ -424,17 +440,19 @@ function renderReceiveQueue() {
 async function selectReceiveItem(id) {
   const item = receiveItems.find(i => i.id === id);
   if (!item) return;
-  if (item.status === 'expired') {
+  if (item.status === 'expired' && !item.viewOnly) {
     toastMsg('⚠ Access limit reached — this transfer is no longer accessible.');
-    return;
-  }
-  if (item.maxViews && item.viewCount >= item.maxViews) {
-    toastMsg('⚠ Maximum view count reached for this transfer.');
     return;
   }
   selectedReceiveId = id;
   renderReceiveQueue();
   _renderTransferDetail(receiveItems.find(i => i.id === id));
+}
+
+function _fmtSize(bytes) {
+  if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return bytes + ' B';
 }
 
 function _renderTransferDetail(item) {
@@ -461,8 +479,10 @@ function _renderTransferDetail(item) {
     <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;">
       <div class="confirm-items-label">Files included</div>
       ${item.maxViews
-        ? `<span style="font-family:'Space Mono',monospace;font-size:11px;color:${item.viewCount >= item.maxViews ? '#991b1b' : 'var(--text-muted)'};">${item.viewCount} / ${item.maxViews} downloads</span>`
-        : `<span style="font-family:'Space Mono',monospace;font-size:11px;color:var(--text-muted);">Unlimited downloads</span>`
+        ? `<span style="font-family:'Space Mono',monospace;font-size:11px;color:${item.viewCount >= item.maxViews ? '#991b1b' : 'var(--text-muted)'};">${item.viewCount} / ${item.maxViews} ${item.viewOnly ? 'views' : 'downloads'}</span>`
+        : item.trackViews
+          ? `<span style="font-family:'Space Mono',monospace;font-size:11px;color:var(--text-muted);">${item.viewCount} ${item.viewOnly ? 'views' : 'downloads'}</span>`
+          : `<span style="font-family:'Space Mono',monospace;font-size:11px;color:var(--text-muted);">Unlimited ${item.viewOnly ? 'views' : 'downloads'}</span>`
       }
     </div>
     <div style="margin-top:8px;">
@@ -471,7 +491,7 @@ function _renderTransferDetail(item) {
           <div class="receive-file-chip">
             <span>${fileIcon(f)}</span>
             <span style="flex:1">${f.name}</span>
-            <span style="font-family:'Space Mono',monospace;font-size:11px;color:var(--text-muted)">${f.size} · ${f.type}</span>
+            <span style="font-family:'Space Mono',monospace;font-size:11px;color:var(--text-muted)">${_fmtSize(f.size)} · ${f.type}</span>
           </div>`).join('')}
       </div>
     </div>
@@ -493,23 +513,39 @@ function _renderTransferDetail(item) {
       </div>
     </div>` : ''}
 
-    ${item.status === 'pending' ? `
+    ${(item.viewOnly && item.status === 'expired') ? `
+    <div class="receive-detail-actions">
+      <button class="btn-accept" disabled style="opacity:0.4;cursor:not-allowed;" title="View limit reached">View File</button>
+    </div>
+    <div style="margin-top:6px;text-align:center;font-size:12px;color:#991b1b;font-weight:600;">View limit reached</div>
+    ` : item.status === 'pending' ? `
     <div class="receive-detail-actions">
       <button class="btn-decline" onclick="respondReceive('${item.id}','declined')">Decline</button>
-      ${item.timeRestricted && !item.withinAllowedWindow
-        ? `<button class="btn-accept" disabled style="opacity:0.4;cursor:not-allowed;" title="Outside allowed time window">Accept &amp; Download</button>`
-        : item.passwordRequired && !item.passwordVerified
-          ? `<button class="btn-accept" onclick="openReceivePasswordModal('${item.id}')">Enter Password / PIN</button>`
-          : `<button class="btn-accept" onclick="respondReceive('${item.id}','accepted')">Accept &amp; Download</button>`
-      }
+      ${(() => {
+        const blocked = item.timeRestricted && !item.withinAllowedWindow;
+        const action  = item.viewOnly ? 'View File' : 'Accept &amp; Download';
+        if (blocked)
+          return `<button class="btn-accept" disabled style="opacity:0.4;cursor:not-allowed;" title="Outside allowed time window">${action}</button>`;
+        if (item.passwordRequired && !item.passwordVerified)
+          return `<button class="btn-accept" onclick="openReceivePasswordModal('${item.id}')">${item.viewOnly ? 'Enter Password / PIN to View' : 'Enter Password / PIN'}</button>`;
+        return `<button class="btn-accept" onclick="respondReceive('${item.id}','accepted')">${action}</button>`;
+      })()}
     </div>` : item.status === 'accepted' ? `
     <div class="receive-detail-actions">
-      ${item.timeRestricted && !item.withinAllowedWindow
-        ? `<button class="btn-accept" disabled style="opacity:0.4;cursor:not-allowed;" title="Outside allowed time window">Download Again</button>`
-        : item.passwordRequired && !item.passwordVerified
-          ? `<button class="btn-accept" onclick="openReceivePasswordModal('${item.id}')">Enter Password / PIN to Download</button>`
-          : `<button class="btn-accept" onclick="downloadTransfer('${item.id}')">Download Again</button>`
-      }
+      ${(() => {
+        const blocked = item.timeRestricted && !item.withinAllowedWindow;
+        const limitHit = item.viewOnly && item.maxViews && item.viewCount >= item.maxViews;
+        const action  = item.viewOnly ? 'View File Again' : 'Download Again';
+        if (limitHit)
+          return `<button class="btn-accept" disabled style="opacity:0.4;cursor:not-allowed;" title="View limit reached">${action}</button>`;
+        if (blocked)
+          return `<button class="btn-accept" disabled style="opacity:0.4;cursor:not-allowed;" title="Outside allowed time window">${action}</button>`;
+        if (item.passwordRequired && !item.passwordVerified)
+          return `<button class="btn-accept" onclick="openReceivePasswordModal('${item.id}')">${item.viewOnly ? 'Enter Password / PIN to View' : 'Enter Password / PIN to Download'}</button>`;
+        if (item.viewOnly)
+          return `<button class="btn-accept" onclick="viewFile('${item.id}')">View File Again</button>`;
+        return `<button class="btn-accept" onclick="downloadTransfer('${item.id}')">Download Again</button>`;
+      })()}
     </div>` : item.status === 'expired' ? `
     <div style="margin-top:16px;background:#fef2f2;border:1px solid #fca5a5;border-radius:var(--radius-sm);padding:12px 14px;font-size:13px;color:#991b1b;font-weight:600;">
       Access limit reached — this transfer is no longer accessible.
@@ -531,8 +567,14 @@ async function respondReceive(id, decision) {
   if (decision === 'accepted') {
     renderReceiveQueue(); updateReceiveBadge();
     _renderTransferDetail(receiveItems.find(i => i.id === id));
-    toastMsg('✓ Downloading…');
-    downloadTransfer(id);
+    const accepted = receiveItems.find(i => i.id === id);
+    if (accepted && accepted.viewOnly) {
+      toastMsg('Opening file viewer…');
+      viewFile(id);
+    } else {
+      toastMsg('✓ Downloading…');
+      downloadTransfer(id);
+    }
   } else {
     selectedReceiveId = null;
     renderReceiveQueue(); updateReceiveBadge();
@@ -567,7 +609,7 @@ async function downloadTransfer(id) {
     );
     _pendingPasswordHash = null;
     await _triggerDownload(reply.encrypted_file_b64, reply.encrypted_file_key_b64, item);
-    receiveItems = receiveItems.map(i => i.id === id ? { ...i, viewCount: (i.viewCount || 0) + 1 } : i);
+    receiveItems = receiveItems.map(i => i.id === id ? { ...i, viewCount: (i.viewCount || 0) + 1, passwordVerified: false } : i);
     const updated = receiveItems.find(i => i.id === id);
     if (updated && selectedReceiveId === id) _renderTransferDetail(updated);
     return true;
@@ -583,6 +625,119 @@ async function downloadTransfer(id) {
     return false;
   }
 }
+
+async function viewFile(id) {
+  const item = receiveItems.find(i => i.id === id);
+  if (!item) return;
+
+  let encrypted_receiver_metadata_b64 = '';
+  if (!MOCK_MODE) {
+    try { await _handshakePromise; } catch { toastMsg('⚠ Key exchange failed.'); return; }
+    const metadata = { receiver_id: currentUser.username, timestamp: new Date().toISOString(),
+      ...(_pendingPasswordHash ? { password_hash: _pendingPasswordHash } : {}) };
+    const encMeta = await _aesGcmEncrypt(_sessionKey, new TextEncoder().encode(JSON.stringify(metadata)));
+    encrypted_receiver_metadata_b64 = btoa(String.fromCharCode(...encMeta));
+  }
+
+  try {
+    const reply = await wsRequest(
+      { type: 'request_file_access', receiver_id: currentUser.username, package_id: id, encrypted_receiver_metadata_b64 },
+      'authorized_file_delivery', 12000
+    );
+    _pendingPasswordHash = null;
+    await _triggerView(reply.encrypted_file_b64, reply.encrypted_file_key_b64, item);
+    receiveItems = receiveItems.map(i => i.id === id ? { ...i, viewCount: (i.viewCount || 0) + 1, passwordVerified: false } : i);
+    const updated = receiveItems.find(i => i.id === id);
+    if (updated && selectedReceiveId === id) _renderTransferDetail(updated);
+  } catch (err) {
+    if (err.message === 'authorization_denied') {
+      _pendingPasswordHash = null;
+      toastMsg('⚠ Access denied for this transfer.');
+      setTimeout(fetchTransfers, 1000);
+    } else {
+      toastMsg('⚠ Could not load file — check console.');
+      console.error('[TALUS] viewFile error:', err);
+    }
+  }
+}
+
+async function _triggerView(encryptedFileB64, encryptedFileKeyB64, item) {
+  let fileBytes;
+  if (!MOCK_MODE && encryptedFileKeyB64 && _privateKey) {
+    const encKeyBytes = Uint8Array.from(atob(encryptedFileKeyB64), c => c.charCodeAt(0));
+    const fileKeyRaw = await crypto.subtle.decrypt({ name: 'RSA-OAEP' }, _privateKey, encKeyBytes);
+    const fileKey = await crypto.subtle.importKey('raw', fileKeyRaw, { name: 'AES-GCM' }, false, ['decrypt']);
+    const encFileBytes = Uint8Array.from(atob(encryptedFileB64), c => c.charCodeAt(0));
+    fileBytes = await _aesGcmDecrypt(fileKey, encFileBytes);
+  } else {
+    fileBytes = Uint8Array.from(atob(encryptedFileB64), c => c.charCodeAt(0));
+  }
+
+  let files = [];
+  try {
+    const payload = JSON.parse(new TextDecoder().decode(fileBytes));
+    if (Array.isArray(payload)) files = payload;
+  } catch { /* raw bytes — no structured payload */ }
+
+  const content = document.getElementById('view-file-content');
+  const title   = document.getElementById('view-file-title');
+  title.textContent = '📄 ' + (files[0]?.name || item.files[0]?.name || 'File');
+  content.innerHTML = '';
+
+  if (!files.length) {
+    content.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">No previewable content.</div>`;
+  } else {
+    for (const f of files) {
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'margin-bottom:18px;';
+      if (files.length > 1) {
+        const lbl = document.createElement('div');
+        lbl.style.cssText = 'font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;';
+        lbl.textContent = f.name;
+        wrap.appendChild(lbl);
+      }
+      const mime = f.mime || '';
+      if (f.type === 'text') {
+        const pre = document.createElement('pre');
+        pre.style.cssText = 'background:var(--teal-pale);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:14px;font-family:"Space Mono",monospace;font-size:13px;line-height:1.6;overflow-x:auto;white-space:pre-wrap;word-break:break-all;max-height:420px;overflow-y:auto;margin:0;';
+        pre.textContent = f.content || '';
+        wrap.appendChild(pre);
+      } else if (mime.startsWith('text/')) {
+        const pre = document.createElement('pre');
+        pre.style.cssText = 'background:var(--teal-pale);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:14px;font-family:"Space Mono",monospace;font-size:13px;line-height:1.6;overflow-x:auto;white-space:pre-wrap;word-break:break-all;max-height:420px;overflow-y:auto;margin:0;';
+        try { pre.textContent = new TextDecoder().decode(Uint8Array.from(atob(f.content), c => c.charCodeAt(0))); }
+        catch { pre.textContent = f.content || ''; }
+        wrap.appendChild(pre);
+      } else if (mime.startsWith('image/')) {
+        const img = document.createElement('img');
+        img.style.cssText = 'max-width:100%;border-radius:var(--radius-sm);display:block;';
+        const blob = new Blob([Uint8Array.from(atob(f.content), c => c.charCodeAt(0))], { type: mime });
+        img.src = URL.createObjectURL(blob);
+        img.onload = () => {}; // keep URL alive while modal is open; revoke on close
+        img._blobUrl = img.src;
+        wrap.appendChild(img);
+      } else {
+        const msg = document.createElement('div');
+        msg.style.cssText = 'background:var(--teal-pale);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:20px;text-align:center;color:var(--text-muted);font-size:13px;';
+        msg.textContent = `Cannot preview "${f.name}" — ${mime || 'unknown file type'}.`;
+        wrap.appendChild(msg);
+      }
+      content.appendChild(wrap);
+    }
+  }
+  document.getElementById('view-file-modal').classList.add('open');
+}
+
+function closeViewModal() {
+  // Revoke any blob URLs used for images
+  document.querySelectorAll('#view-file-content img[src]').forEach(img => {
+    if (img._blobUrl) URL.revokeObjectURL(img._blobUrl);
+  });
+  document.getElementById('view-file-modal').classList.remove('open');
+}
+document.getElementById('view-file-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeViewModal();
+});
 
 async function _triggerDownload(encryptedFileB64, encryptedFileKeyB64, item) {
   let fileBytes;
@@ -600,18 +755,36 @@ async function _triggerDownload(encryptedFileB64, encryptedFileKeyB64, item) {
   try {
     const payload = JSON.parse(new TextDecoder().decode(fileBytes));
     if (Array.isArray(payload)) {
-      payload.forEach(f => {
-        let blob;
-        if (f.type === 'file' && f.content) {
-          const bytes = Uint8Array.from(atob(f.content), c => c.charCodeAt(0));
-          blob = new Blob([bytes], { type: f.mime || 'application/octet-stream' });
-        } else if (f.type === 'text' && f.content) {
-          blob = new Blob([f.content], { type: 'text/plain' });
-        } else { return; }
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = f.name; a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-      });
+      // Detect folder payload: any file name contains a path separator
+      const isFolder = payload.some(f => f.name && f.name.includes('/'));
+      if (isFolder) {
+        const zip = new JSZip();
+        for (const f of payload) {
+          if (f.type === 'file' && f.content) {
+            zip.file(f.name, Uint8Array.from(atob(f.content), c => c.charCodeAt(0)));
+          } else if (f.type === 'text' && f.content) {
+            zip.file(f.name, f.content);
+          }
+        }
+        const folderName = payload[0].name.split('/')[0];
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(zipBlob);
+        const a = document.createElement('a'); a.href = url; a.download = folderName + '.zip'; a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+      } else {
+        payload.forEach(f => {
+          let blob;
+          if (f.type === 'file' && f.content) {
+            const bytes = Uint8Array.from(atob(f.content), c => c.charCodeAt(0));
+            blob = new Blob([bytes], { type: f.mime || 'application/octet-stream' });
+          } else if (f.type === 'text' && f.content) {
+            blob = new Blob([f.content], { type: 'text/plain' });
+          } else { return; }
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a'); a.href = url; a.download = f.name; a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        });
+      }
       return;
     }
   } catch { /* not structured payload — fall through */ }

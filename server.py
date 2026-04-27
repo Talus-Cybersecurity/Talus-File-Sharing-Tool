@@ -62,6 +62,7 @@ class FilePackage:
     file_name: Optional[str] = None
     file_type: Optional[str] = None
     file_size: Optional[str] = None
+    files_meta: Optional[list] = None
     uploaded_at: Any = field(default_factory=lambda: datetime.now(timezone.utc))
     delivered: bool = False
     accepted: bool = False
@@ -530,6 +531,23 @@ async def handle_create_session_key(ws: WebSocketServerProtocol, data: Dict[str,
         "encrypted_session_key_b64": encode_b64(encrypted_key)
     })
 
+def _build_files_list(files_meta, file_name, file_size, file_type):
+    if files_meta:
+        return [
+            {
+                "name": f.get("name", "file"),
+                "size": f.get("size", 0),
+                "type": (f.get("mime", "") or "").split("/")[-1].upper() or "FILE"
+            }
+            for f in files_meta
+        ]
+    try:
+        size = int((file_size or "0").split()[0])
+    except (ValueError, IndexError):
+        size = 0
+    return [{"name": file_name or "transfer", "size": size, "type": (file_type or "").split("/")[-1].upper() or "FILE"}]
+
+
 def _check_tod_window(requirements: Dict[str, Any]) -> tuple[bool, str, bool]:
     """Returns (time_restricted, tod_display, within_window)."""
     tod_window = requirements.get("time_of_day_window")
@@ -606,7 +624,9 @@ async def handle_get_incoming_transfers(ws: WebSocketServerProtocol, data: Dict[
             "timeRestricted": time_restricted,
             "todDisplay": tod_display,
             "withinAllowedWindow": within_window,
-            "files": [{"name": pkg.file_name or "transfer", "size": pkg.file_size or "unknown", "type": (pkg.file_type or "").split("/")[-1].upper() or "FILE"}],
+            "viewOnly": bool(requirements.get("view_only")),
+            "trackViews": bool(requirements.get("track_views")),
+            "files": _build_files_list(pkg.files_meta, pkg.file_name, pkg.file_size, pkg.file_type),
             "options": [],
             "maxViews": max_views,
             "viewCount": view_count
@@ -658,10 +678,11 @@ async def handle_upload_package(ws: WebSocketServerProtocol, data: Dict[str, Any
     upload_time = datetime.now(timezone.utc)
  
     try:
+        sender_key = sender_session_keys.get(sender_id)
+        if not sender_key:
+            raise ValueError("No session key for sender")
         requirements = json.loads(
-            rsa_decrypt_with_server_private_key(
-                decode_b64(encrypted_requirements_b64)
-            ).decode("utf-8")
+            aes_gcm_decrypt(sender_key, decode_b64(encrypted_requirements_b64)).decode("utf-8")
         )
     except Exception:
         entry = log_sender_event(
@@ -690,6 +711,7 @@ async def handle_upload_package(ws: WebSocketServerProtocol, data: Dict[str, Any
         file_name=file_name,
         file_type=file_type,
         file_size=file_size,
+        files_meta=data.get("files_meta"),
         uploaded_at=upload_time
     )
  
@@ -757,7 +779,9 @@ async def handle_upload_package(ws: WebSocketServerProtocol, data: Dict[str, Any
             "timeRestricted": time_restricted,
             "todDisplay": tod_display,
             "withinAllowedWindow": within_window,
-            "files": [{"name": file_name or "transfer", "size": file_size or "unknown", "type": (file_type or "").split("/")[-1].upper() or "FILE"}],
+            "viewOnly": bool(requirements.get("view_only")),
+            "trackViews": bool(requirements.get("track_views")),
+            "files": _build_files_list(data.get("files_meta"), file_name, file_size, file_type),
             "options": [],
             "maxViews": requirements.get("max_views"),
             "viewCount": 0
@@ -1119,7 +1143,8 @@ async def main() -> None:
         client_handler,
         HOST,
         PORT,
-        ssl=ssl_context
+        ssl=ssl_context,
+        max_size=100 * 1024 * 1024  # 100 MB per message
     ):
         logging.info("Secure websocket server running on wss://%s:%s", HOST, PORT)
         await asyncio.Future()

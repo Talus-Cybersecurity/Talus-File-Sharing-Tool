@@ -75,35 +75,40 @@
             <div class="setting-row">
               <span class="setting-label">IP</span>
               <button class="gear-btn" onclick="openSetting('IP')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg></button>
-              <label class="toggle"><input type="checkbox" onchange="toastMsg('IP filter '+togStr(this))"><span class="toggle-track"></span></label>
+              <label class="toggle"><input type="checkbox" data-key="ip_filter" onchange="toastMsg('IP filter '+togStr(this))"><span class="toggle-track"></span></label>
             </div>
             <div class="setting-row">
               <span class="setting-label">Device certification</span>
               <button class="gear-btn" onclick="openSetting('Device certification')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg></button>
-              <label class="toggle"><input type="checkbox" onchange="toastMsg('Device cert '+togStr(this))"><span class="toggle-track"></span></label>
+              <label class="toggle"><input type="checkbox" data-key="device_cert" onchange="toastMsg('Device cert '+togStr(this))"><span class="toggle-track"></span></label>
             </div>
             <div class="setting-row">
-              <span class="setting-label">Track file views</span>
-              <label class="toggle"><input type="checkbox" onchange="toastMsg('Track file views '+togStr(this))"><span class="toggle-track"></span></label>
+              <span class="setting-label">View Only</span>
+              <label class="toggle"><input type="checkbox" data-key="view_only" id="view-only-toggle" onchange="onViewOnlyToggle(this)"><span class="toggle-track"></span></label>
+            </div>
+            <div class="setting-row" id="track-views-row" style="display:none;background:rgba(255,255,255,0.45);padding-left:32px;">
+              <span class="setting-label" style="font-size:13px;color:var(--text-muted);">↳ Limit file views</span>
+              <span class="setting-value" id="view-limit-value" onclick="editViewLimit()" style="cursor:pointer;">3</span>
+              <label class="toggle"><input type="checkbox" data-key="limit_views" onchange="toastMsg('Limit views '+togStr(this))"><span class="toggle-track"></span></label>
             </div>
             <div class="setting-row">
               <span class="setting-label">Time of day</span>
               <span class="setting-value" id="tod-value" onclick="openTODModal()" style="cursor:pointer;">9:00 AM – 5:00 PM</span>
-              <label class="toggle"><input type="checkbox" id="tod-toggle" onchange="onTODToggle(this)"><span class="toggle-track"></span></label>
+              <label class="toggle"><input type="checkbox" id="tod-toggle" data-key="time_of_day" onchange="onTODToggle(this)"><span class="toggle-track"></span></label>
             </div>
             <div class="setting-row">
               <span class="setting-label">Limit Downloads</span>
               <span class="setting-value" id="la-value" onclick="editLimitedAccess()">5</span>
-              <label class="toggle"><input type="checkbox" onchange="toastMsg('Limited access '+togStr(this))"><span class="toggle-track"></span></label>
+              <label class="toggle"><input type="checkbox" data-key="limited_access" onchange="toastMsg('Limited access '+togStr(this))"><span class="toggle-track"></span></label>
             </div>
             <div class="setting-row">
               <span class="setting-label">Watermark</span>
-              <label class="toggle"><input type="checkbox" onchange="toastMsg('Watermark '+togStr(this))"><span class="toggle-track"></span></label>
+              <label class="toggle"><input type="checkbox" data-key="watermark" onchange="toastMsg('Watermark '+togStr(this))"><span class="toggle-track"></span></label>
             </div>
             <div class="setting-row">
               <span class="setting-label">Password / Pin</span>
               <button class="gear-btn" onclick="openSetting('Password/PIN')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg></button>
-              <label class="toggle"><input type="checkbox" id="password-toggle" onchange="onPasswordToggle(this)"><span class="toggle-track"></span></label>
+              <label class="toggle"><input type="checkbox" id="password-toggle" data-key="password" onchange="onPasswordToggle(this)"><span class="toggle-track"></span></label>
             </div>
           </div>
         </div>
@@ -298,7 +303,7 @@ document.getElementById('profile-display-name').textContent = currentUser.userna
 document.getElementById('profile-display-user').textContent = '@' + currentUser.username.toLowerCase().replace(/\s+/g,'');
 
 // ── Crypto helpers ────────────────────────────────────────────────────
-let _privateKey = null, _serverPublicKeyPem = null, _handshakePromise = null;
+let _privateKey = null, _serverPublicKeyPem = null, _senderSessionKey = null, _handshakePromise = null;
 
 function _pemToDer(pem) {
   const b64 = pem.replace(/-----[^-]+-----/g, '').replace(/\s/g, '');
@@ -335,7 +340,8 @@ async function _doHandshake() {
 
   const skReply = await wsRequest({ type: 'create_session_key', client_id: currentUser.username }, 'session_key_created');
   const encKeyBytes = Uint8Array.from(atob(skReply.encrypted_session_key_b64), c => c.charCodeAt(0));
-  await crypto.subtle.decrypt({ name: 'RSA-OAEP' }, _privateKey, encKeyBytes);
+  const rawKey = await crypto.subtle.decrypt({ name: 'RSA-OAEP' }, _privateKey, encKeyBytes);
+  _senderSessionKey = await crypto.subtle.importKey('raw', rawKey, { name: 'AES-GCM' }, false, ['encrypt']);
 
   _wsReady = true;
 }
@@ -439,22 +445,48 @@ function attachFolder(e) {
   const files = Array.from(e.target.files);
   if (!files.length) return;
   const folderName = files[0].webkitRelativePath.split('/')[0];
-  addItem(folderName, 'folder');
+  addItem(folderName, 'folder', null, null, files);
   e.target.value = '';
 }
 
 async function pasteClipboard() {
   try {
-    const text = await navigator.clipboard.readText();
-    if (!text.trim()) { toastMsg('Clipboard is empty or not text.'); return; }
-    const preview = '[Clipboard] ' + text.trim().slice(0,30) + (text.length > 30 ? '…' : '');
-    addItem(preview, 'text', null, text.trim());
+    let handled = false;
+    if (navigator.clipboard.read) {
+      const items = await navigator.clipboard.read();
+      for (const clipItem of items) {
+        const imageType = clipItem.types.find(t => t.startsWith('image/'));
+        if (imageType) {
+          const blob = await clipItem.getType(imageType);
+          const ext = (imageType.split('/')[1] || 'png').split('+')[0];
+          const file = new File([blob], `clipboard.${ext}`, { type: imageType });
+          addItem(file.name, 'file', file);
+          handled = true;
+          break;
+        }
+        if (clipItem.types.includes('text/plain')) {
+          const blob = await clipItem.getType('text/plain');
+          const text = await blob.text();
+          if (!text.trim()) continue;
+          const file = new File([text.trim()], 'clipboard.txt', { type: 'text/plain' });
+          addItem(file.name, 'file', file);
+          handled = true;
+          break;
+        }
+      }
+    }
+    if (!handled) {
+      const text = await navigator.clipboard.readText();
+      if (!text.trim()) { toastMsg('Clipboard is empty.'); return; }
+      const file = new File([text.trim()], 'clipboard.txt', { type: 'text/plain' });
+      addItem(file.name, 'file', file);
+    }
   } catch(e) { toastMsg('Clipboard access denied — check browser permissions.'); }
 }
 
-function addItem(name, type, fileObj, fullText) {
+function addItem(name, type, fileObj, fullText, folderFiles) {
   const id = Date.now() + Math.random();
-  attachedItems.push({ id, name, type, fileObj: fileObj||null, fullText: fullText||null });
+  attachedItems.push({ id, name, type, fileObj: fileObj||null, fullText: fullText||null, folderFiles: folderFiles||null });
   renderAttached();
   toastMsg(`"${name}" attached`);
 }
@@ -536,18 +568,23 @@ function openConfirmModal(id) {
   document.getElementById('confirm-tag').textContent    = '#' + r.tag;
   document.getElementById('confirm-items-list').innerHTML = attachedItems.map(item =>
     `<div class="confirm-item-chip"><span>${item.type==='folder'?'📁':item.type==='text'?'📝':'📄'}</span><span>${item.name}</span></div>`).join('');
-  const labels = ['IP Filter','Device Certification','Track File Views','Time of Day','Limit Downloads','Watermark','Password / PIN'];
-  const icons  = ['🌐','🔒','👁','🕐','🔢','💧','🔑'];
-  const values = [
-    ipList.length ? ipList.slice(0,2).join(', ')+(ipList.length>2?'…':'') : null,
-    null, null,
-    document.getElementById('tod-value').textContent,
-    document.getElementById('la-value').textContent+' views max',
-    null, null
-  ];
-  const toggles = document.querySelectorAll('.right-col .toggle input');
+  const _optionMeta = {
+    ip_filter:      { label:'IP Filter',           icon:'🌐', value:() => ipList.length ? ipList.slice(0,2).join(', ')+(ipList.length>2?'…':'') : null },
+    device_cert:    { label:'Device Certification', icon:'🔒', value:() => null },
+    view_only:      { label:'View Only',            icon:'👁', value:() => null },
+    limit_views:    { label:'↳ Limit File Views',   icon:'🔢', value:() => document.getElementById('view-limit-value').textContent+' max' },
+    time_of_day:    { label:'Time of Day',          icon:'🕐', value:() => document.getElementById('tod-value').textContent },
+    limited_access: { label:'Limit Downloads',      icon:'🔢', value:() => document.getElementById('la-value').textContent+' max' },
+    watermark:      { label:'Watermark',            icon:'💧', value:() => null },
+    password:       { label:'Password / PIN',       icon:'🔑', value:() => null },
+  };
   const active = [];
-  toggles.forEach((t,i) => { if (t.checked) active.push({ label:labels[i], icon:icons[i], value:values[i] }); });
+  document.querySelectorAll('.right-col .toggle input[data-key]').forEach(t => {
+    if (t.checked) {
+      const m = _optionMeta[t.dataset.key];
+      if (m) active.push({ label: m.label, icon: m.icon, value: m.value() });
+    }
+  });
   const optEl = document.getElementById('confirm-options-list');
   optEl.innerHTML = active.length
     ? active.map(o=>`<div class="confirm-option-chip"><span>${o.icon}</span><span>${o.label}</span>${o.value?`<span class="confirm-option-value">${o.value}</span>`:''}</div>`).join('')
@@ -563,9 +600,9 @@ async function confirmSend() {
   if (!_wsReady) { toastMsg('⚠ Not connected to server.'); return; }
 
   const requirements = {};
-  const toggles = document.querySelectorAll('.right-col .toggle input');
-  const optionKeys = ['ip_filter','device_cert','track_views','time_of_day','limited_access','watermark','password'];
-  toggles.forEach((t, i) => { if (t.checked) requirements[optionKeys[i]] = true; });
+  document.querySelectorAll('.right-col .toggle input[data-key]').forEach(t => {
+    if (t.checked) requirements[t.dataset.key] = true;
+  });
 
   if (requirements.password && !_savedPasswordHash) {
     toastMsg('⚠ Set a password or PIN before sending.');
@@ -580,6 +617,8 @@ async function confirmSend() {
   };
   const la = parseInt(document.getElementById('la-value').textContent);
   if (requirements.limited_access && !isNaN(la)) requirements.max_views = la;
+  const vl = parseInt(document.getElementById('view-limit-value').textContent);
+  if (requirements.limit_views && !isNaN(vl)) requirements.max_views = vl;
   if (ipList.length) requirements.allowed_ips = ipList;
   if (requirements.password && _savedPasswordHash) requirements.password_hash = _savedPasswordHash;
 
@@ -591,25 +630,35 @@ async function confirmSend() {
   } else {
     try { await _handshakePromise; } catch { toastMsg('⚠ Key exchange failed.'); return; }
 
-    // Encrypt requirements with server's RSA public key
+    // Encrypt requirements with sender's AES session key (avoids RSA ~190-byte limit)
     const reqBytes = new TextEncoder().encode(JSON.stringify(requirements));
-    encrypted_requirements_b64 = await _encryptWithPublicKeyPem(_serverPublicKeyPem, reqBytes);
+    const encReq = await _aesGcmEncrypt(_senderSessionKey, reqBytes);
+    let encReqBinary = '';
+    for (let i = 0; i < encReq.length; i += 8192)
+      encReqBinary += String.fromCharCode(...encReq.subarray(i, i + 8192));
+    encrypted_requirements_b64 = btoa(encReqBinary);
 
     // Read actual file content into a structured payload
-    const payload = await Promise.all(attachedItems.map(async item => {
+    const _readFile = async (f, name) => {
+      const buf = await f.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      let binary = '';
+      const chunk = 8192;
+      for (let i = 0; i < bytes.length; i += chunk)
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+      return { name, type: 'file', content: btoa(binary), mime: f.type || 'application/octet-stream' };
+    };
+    const payloadParts = await Promise.all(attachedItems.map(async item => {
       if (item.type === 'text') {
-        return { name: item.name, type: 'text', content: item.fullText || item.name };
+        return [{ name: item.name, type: 'text', content: item.fullText || item.name }];
+      } else if (item.type === 'folder' && item.folderFiles) {
+        return Promise.all(item.folderFiles.map(f => _readFile(f, f.webkitRelativePath || f.name)));
       } else if (item.fileObj) {
-        const buf = await item.fileObj.arrayBuffer();
-        const bytes = new Uint8Array(buf);
-        let binary = '';
-        const chunk = 8192;
-        for (let i = 0; i < bytes.length; i += chunk)
-          binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-        return { name: item.name, type: 'file', content: btoa(binary), mime: item.fileObj.type || 'application/octet-stream' };
+        return [await _readFile(item.fileObj, item.name)];
       }
-      return { name: item.name, type: item.type };
+      return [];
     }));
+    const payload = payloadParts.flat();
 
     // Encrypt payload with a random AES-GCM key
     const fileAesKey = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
@@ -642,7 +691,15 @@ async function confirmSend() {
         encrypted_file_key_b64,
         file_name: attachedItems[0]?.name || 'transfer',
         file_type: attachedItems[0]?.fileObj?.type || 'application/octet-stream',
-        file_size: String(attachedItems.reduce((s, i) => s + (i.fileObj?.size || 0), 0)) + ' bytes'
+        file_size: String(attachedItems.reduce((s, i) => {
+          if (i.type === 'folder' && i.folderFiles) return s + i.folderFiles.reduce((fs, f) => fs + f.size, 0);
+          return s + (i.fileObj?.size || 0);
+        }, 0)) + ' bytes',
+        files_meta: attachedItems.flatMap(i => {
+          if (i.type === 'folder' && i.folderFiles)
+            return i.folderFiles.map(f => ({ name: f.webkitRelativePath || f.name, mime: f.type || 'application/octet-stream', size: f.size }));
+          return [{ name: i.name, mime: i.fileObj?.type || (i.type === 'text' ? 'text/plain' : 'application/octet-stream'), size: i.fileObj?.size || 0 }];
+        })
       },
       'upload_package_ack',
       12000
@@ -714,7 +771,7 @@ const _TOD_TIMEZONES = [
   { v:'Australia/Sydney',     l:'Sydney (AEST)' },
   { v:'Pacific/Auckland',     l:'New Zealand (NZST)' },
 ];
-let _todConfig = { sh:9, sm:0, sampm:'AM', eh:5, em:0, eampm:'PM', tz:'America/New_York' };
+let _todConfig = { sh:9, sm:0, sampm:'AM', eh:5, em:0, eampm:'PM', tz:'America/Los_Angeles' };
 
 function _todLabel(tz) { return (_TOD_TIMEZONES.find(t=>t.v===tz)||{l:tz}).l; }
 function _pad(n) { return String(n).padStart(2,'0'); }
@@ -761,6 +818,20 @@ function saveTOD() {
   toastMsg('Time of day restriction saved');
 }
 
+function onViewOnlyToggle(cb) {
+  const row = document.getElementById('track-views-row');
+  row.style.display = cb.checked ? 'flex' : 'none';
+  if (!cb.checked) row.querySelector('input[data-key="limit_views"]').checked = false;
+  toastMsg('View Only ' + togStr(cb));
+}
+function editViewLimit() {
+  const v = prompt('Max view count:', document.getElementById('view-limit-value').textContent);
+  const n = parseInt(v);
+  if (v !== null && !isNaN(n) && n > 0) {
+    document.getElementById('view-limit-value').textContent = n;
+    toastMsg('View limit updated');
+  }
+}
 function onTODToggle(cb) {
   if (cb.checked) openTODModal();
   else toastMsg('Time of day restriction disabled');
@@ -861,6 +932,10 @@ function toastMsg(msg) {
   toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
 }
 
+window.addEventListener('pageshow', () => {
+  const vo = document.getElementById('view-only-toggle');
+  if (vo) document.getElementById('track-views-row').style.display = vo.checked ? 'flex' : 'none';
+});
 window.addEventListener('beforeunload', wsDisconnect);
 </script>
 </body>
