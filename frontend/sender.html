@@ -97,18 +97,15 @@
               <label class="toggle"><input type="checkbox" id="tod-toggle" data-key="time_of_day" onchange="onTODToggle(this)"><span class="toggle-track"></span></label>
             </div>
             <div class="setting-row">
-              <span class="setting-label">Limit Downloads</span>
-              <span class="setting-value" id="la-value" onclick="editLimitedAccess()">5</span>
-              <label class="toggle"><input type="checkbox" data-key="limited_access" onchange="toastMsg('Limited access '+togStr(this))"><span class="toggle-track"></span></label>
-            </div>
-            <div class="setting-row">
-              <span class="setting-label">Watermark</span>
-              <label class="toggle"><input type="checkbox" data-key="watermark" onchange="toastMsg('Watermark '+togStr(this))"><span class="toggle-track"></span></label>
+              <span class="setting-label">Watermark images</span>
+              <span class="setting-value" id="watermark-value" onclick="openWatermarkModal()" title="Configure watermark">Default · 35%</span>
+              <button class="gear-btn" onclick="openWatermarkModal()" title="Watermark settings">⚙</button>
+              <label class="toggle"><input type="checkbox" id="watermark-toggle" onchange="onWatermarkToggle(this)"><span class="toggle-track"></span></label>
             </div>
             <div class="setting-row">
               <span class="setting-label">Password / Pin</span>
               <button class="gear-btn" onclick="openSetting('Password/PIN')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg></button>
-              <label class="toggle"><input type="checkbox" id="password-toggle" data-key="password" onchange="onPasswordToggle(this)"><span class="toggle-track"></span></label>
+              <label class="toggle"><input type="checkbox" id="password-toggle" onchange="onPasswordToggle(this)"><span class="toggle-track"></span></label>
             </div>
           </div>
         </div>
@@ -180,29 +177,18 @@
   <div class="modal settings-modal">
     <div class="modal-title">🌐 IP Restriction</div>
     <div class="field-group">
-      <div class="field-label">Default policy</div>
-      <div class="pin-tabs" style="margin-bottom:6px;">
-        <button class="pin-tab active" id="ip-default-allow" onclick="setIPDefault('allow')">Allow all by default</button>
-        <button class="pin-tab" id="ip-default-block" onclick="setIPDefault('block')">Block all by default</button>
+      <div>
+        <div class="field-label">Add IP address or range</div>
+        <div class="ip-add-row">
+          <input class="field-input" id="ip-input" placeholder="e.g. 192.168.1.1 or 10.0.0.0/24" onkeydown="if(event.key==='Enter') addIP()"/>
+          <button class="ip-add-btn" onclick="addIP()">+ Add</button>
+        </div>
+        <div class="field-hint">Supports single IPs and CIDR notation</div>
       </div>
-      <div class="field-hint" id="ip-policy-hint">Allow everyone except IPs in the block list.</div>
-    </div>
-    <div class="field-group">
-      <div class="field-label">Block list</div>
-      <div class="ip-add-row">
-        <input class="field-input" id="ip-block-input" placeholder="e.g. 203.0.113.0/24" onkeydown="if(event.key==='Enter') addIPRule('block')"/>
-        <button class="ip-add-btn" onclick="addIPRule('block')">+ Add</button>
+      <div>
+        <div class="field-label">Allowed IPs</div>
+        <div class="ip-list" id="ip-list"><div style="color:var(--text-muted);font-size:13px;padding:8px 4px;">No IPs added yet.</div></div>
       </div>
-      <div class="ip-list" id="ip-block-list"><div style="color:var(--text-muted);font-size:13px;padding:8px 4px;">No entries.</div></div>
-    </div>
-    <div class="field-group">
-      <div class="field-label">Allow list</div>
-      <div class="ip-add-row">
-        <input class="field-input" id="ip-allow-input" placeholder="e.g. 192.168.1.0/24" onkeydown="if(event.key==='Enter') addIPRule('allow')"/>
-        <button class="ip-add-btn" onclick="addIPRule('allow')">+ Add</button>
-      </div>
-      <div class="ip-list" id="ip-allow-list"><div style="color:var(--text-muted);font-size:13px;padding:8px 4px;">No entries.</div></div>
-      <div class="field-hint">Supports single IPs and CIDR notation. Block list takes priority over allow list.</div>
     </div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal('ip-modal')">Cancel</button>
@@ -286,6 +272,56 @@
     <div class="modal-actions">
       <button class="btn-cancel" onclick="cancelPinModal()">Cancel</button>
       <button class="btn-save" onclick="savePinOrPassword()">Save</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Watermark Modal -->
+<div class="modal-overlay" id="watermark-modal">
+  <div class="modal settings-modal watermark-modal">
+    <div class="modal-title">💧 Watermark Images</div>
+    <div class="field-group">
+      <div class="watermark-note">Watermarks are applied in the browser before encryption. Only the watermarked PNG is sent for PNG/JPG images.</div>
+      <div>
+        <div class="field-label">Watermark image</div>
+        <div class="watermark-upload-row">
+          <button class="btn-save" type="button" onclick="document.getElementById('watermark-upload').click()">Choose PNG/JPG</button>
+          <button class="btn-cancel" type="button" onclick="resetWatermarkImage()">Use default</button>
+          <input id="watermark-upload" type="file" accept="image/png,image/jpeg" style="display:none" onchange="handleWatermarkUpload(event)">
+        </div>
+        <div class="field-hint" id="watermark-file-label">Default: TalusWatermark.png</div>
+      </div>
+      <div>
+        <div class="watermark-range-row"><span class="field-label">Opacity</span><span id="watermark-opacity-label">35%</span></div>
+        <input class="watermark-range" id="watermark-opacity" type="range" min="10" max="100" value="35" oninput="updateWatermarkConfigFromControls()">
+      </div>
+      <div>
+        <div class="watermark-range-row"><span class="field-label">Size</span><span id="watermark-size-label">35%</span></div>
+        <input class="watermark-range" id="watermark-size" type="range" min="10" max="90" value="35" oninput="updateWatermarkConfigFromControls()">
+      </div>
+      <div>
+        <div class="field-label">Position</div>
+        <div class="watermark-position-grid" id="watermark-position-grid">
+          <button data-pos="top-left" onclick="setWatermarkPosition('top-left')"></button>
+          <button data-pos="top-center" onclick="setWatermarkPosition('top-center')"></button>
+          <button data-pos="top-right" onclick="setWatermarkPosition('top-right')"></button>
+          <button data-pos="middle-left" onclick="setWatermarkPosition('middle-left')"></button>
+          <button data-pos="center" class="active" onclick="setWatermarkPosition('center')"></button>
+          <button data-pos="middle-right" onclick="setWatermarkPosition('middle-right')"></button>
+          <button data-pos="bottom-left" onclick="setWatermarkPosition('bottom-left')"></button>
+          <button data-pos="bottom-center" onclick="setWatermarkPosition('bottom-center')"></button>
+          <button data-pos="bottom-right" onclick="setWatermarkPosition('bottom-right')"></button>
+        </div>
+      </div>
+      <div>
+        <div class="field-label">Preview</div>
+        <div class="watermark-preview" id="watermark-preview">Attach/select an image to preview the watermark.</div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('watermark-modal')">Close</button>
+      <button class="btn-save" onclick="saveWatermarkSettings()">Save</button>
     </div>
   </div>
 </div>
