@@ -76,12 +76,13 @@ async function _unwrapPrivateKey(password, pbkdf2SaltB64, aesIvB64, encryptedPri
 }
 
 // Store user in sessionStorage so sender/receiver pages can read it
-async function _afterLogin(username, userId, privateKey, publicKeyPem) {
+async function _afterLogin(username, userId, tagId, privateKey, publicKeyPem) {
   const exportedKey = await crypto.subtle.exportKey('pkcs8', privateKey);
   const keyB64 = btoa(String.fromCharCode(...new Uint8Array(exportedKey)));
   sessionStorage.setItem('talus_user', JSON.stringify({
     username,
     userId,
+    tag: tagId,
     initials: username.slice(0, 2).toUpperCase()
   }));
   sessionStorage.setItem('talus_private_key', keyB64);
@@ -104,7 +105,7 @@ async function doLogin() {
     setTimeout(() => {
       btn.textContent = 'Sign In'; btn.disabled = false;
       sessionStorage.setItem('talus_user', JSON.stringify({
-        username, userId: 'mock-user-id', initials: username.slice(0, 2).toUpperCase()
+        username, userId: 'mock-user-id', tag: '0000', initials: username.slice(0, 2).toUpperCase()
       }));
       window.location.href = 'sender.html';
     }, 400);
@@ -137,7 +138,7 @@ async function doLogin() {
         reply.aes_iv,
         reply.encrypted_private_key
       );
-      await _afterLogin(username, reply.user_id, privateKey, reply.public_key_pem);
+      await _afterLogin(username, reply.user_id, reply.tag_id, privateKey, reply.public_key_pem);
       return;
     }
     errEl.textContent = reply.message || 'Invalid username or password.';

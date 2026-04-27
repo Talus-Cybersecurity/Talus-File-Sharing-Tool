@@ -180,18 +180,29 @@
   <div class="modal settings-modal">
     <div class="modal-title">🌐 IP Restriction</div>
     <div class="field-group">
-      <div>
-        <div class="field-label">Add IP address or range</div>
-        <div class="ip-add-row">
-          <input class="field-input" id="ip-input" placeholder="e.g. 192.168.1.1 or 10.0.0.0/24" onkeydown="if(event.key==='Enter') addIP()"/>
-          <button class="ip-add-btn" onclick="addIP()">+ Add</button>
-        </div>
-        <div class="field-hint">Supports single IPs and CIDR notation</div>
+      <div class="field-label">Default policy</div>
+      <div class="pin-tabs" style="margin-bottom:6px;">
+        <button class="pin-tab active" id="ip-default-allow" onclick="setIPDefault('allow')">Allow all by default</button>
+        <button class="pin-tab" id="ip-default-block" onclick="setIPDefault('block')">Block all by default</button>
       </div>
-      <div>
-        <div class="field-label">Allowed IPs</div>
-        <div class="ip-list" id="ip-list"><div style="color:var(--text-muted);font-size:13px;padding:8px 4px;">No IPs added yet.</div></div>
+      <div class="field-hint" id="ip-policy-hint">Allow everyone except IPs in the block list.</div>
+    </div>
+    <div class="field-group">
+      <div class="field-label">Block list</div>
+      <div class="ip-add-row">
+        <input class="field-input" id="ip-block-input" placeholder="e.g. 203.0.113.0/24" onkeydown="if(event.key==='Enter') addIPRule('block')"/>
+        <button class="ip-add-btn" onclick="addIPRule('block')">+ Add</button>
       </div>
+      <div class="ip-list" id="ip-block-list"><div style="color:var(--text-muted);font-size:13px;padding:8px 4px;">No entries.</div></div>
+    </div>
+    <div class="field-group">
+      <div class="field-label">Allow list</div>
+      <div class="ip-add-row">
+        <input class="field-input" id="ip-allow-input" placeholder="e.g. 192.168.1.0/24" onkeydown="if(event.key==='Enter') addIPRule('allow')"/>
+        <button class="ip-add-btn" onclick="addIPRule('allow')">+ Add</button>
+      </div>
+      <div class="ip-list" id="ip-allow-list"><div style="color:var(--text-muted);font-size:13px;padding:8px 4px;">No entries.</div></div>
+      <div class="field-hint">Supports single IPs and CIDR notation. Block list takes priority over allow list.</div>
     </div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal('ip-modal')">Cancel</button>
@@ -522,6 +533,7 @@ async function addRecipient() {
   if (!match) { toastMsg('Format must be username#0000'); input.focus(); return; }
   const username = match[1].trim(), tag = match[2];
   const full = `${username}#${tag}`;
+  if (username.toLowerCase() === currentUser.username.toLowerCase() && tag === currentUser.tag) { toastMsg("You can't send to yourself."); input.value=''; return; }
   if (recipients.find(r=>r.full.toLowerCase()===full.toLowerCase())) { toastMsg(`${full} already added.`); input.value=''; return; }
 
   if (!MOCK_MODE) {
@@ -569,7 +581,7 @@ function openConfirmModal(id) {
   document.getElementById('confirm-items-list').innerHTML = attachedItems.map(item =>
     `<div class="confirm-item-chip"><span>${item.type==='folder'?'📁':item.type==='text'?'📝':'📄'}</span><span>${item.name}</span></div>`).join('');
   const _optionMeta = {
-    ip_filter:      { label:'IP Filter',           icon:'🌐', value:() => ipList.length ? ipList.slice(0,2).join(', ')+(ipList.length>2?'…':'') : null },
+    ip_filter:      { label:'IP Filter',           icon:'🌐', value:() => { const t=ipPolicy.allow.length+ipPolicy.block.length; return t ? `${ipPolicy.default==='block'?'Block all':'Allow all'}, ${t} rule${t>1?'s':''}` : `Default ${ipPolicy.default}`; } },
     device_cert:    { label:'Device Certification', icon:'🔒', value:() => null },
     view_only:      { label:'View Only',            icon:'👁', value:() => null },
     limit_views:    { label:'↳ Limit File Views',   icon:'🔢', value:() => document.getElementById('view-limit-value').textContent+' max' },
@@ -619,7 +631,7 @@ async function confirmSend() {
   if (requirements.limited_access && !isNaN(la)) requirements.max_views = la;
   const vl = parseInt(document.getElementById('view-limit-value').textContent);
   if (requirements.limit_views && !isNaN(vl)) requirements.max_views = vl;
-  if (ipList.length) requirements.allowed_ips = ipList;
+  if (requirements.ip_filter) requirements.ip_policy = { default: ipPolicy.default, allow: [...ipPolicy.allow], block: [...ipPolicy.block] };
   if (requirements.password && _savedPasswordHash) requirements.password_hash = _savedPasswordHash;
 
   let encrypted_file_b64, encrypted_requirements_b64, encrypted_file_key_b64 = '';
@@ -841,22 +853,35 @@ function editLimitedAccess() {
   if (v && !isNaN(v)) { document.getElementById('la-value').textContent = v; toastMsg('Limited access updated'); }
 }
 
-let ipList = [];
-function addIP() {
-  const input = document.getElementById('ip-input');
-  const val   = input.value.trim();
+let ipPolicy = { default: 'allow', allow: [], block: [] };
+const _ipRe = /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/;
+function setIPDefault(val) {
+  ipPolicy.default = val;
+  document.getElementById('ip-default-allow').classList.toggle('active', val === 'allow');
+  document.getElementById('ip-default-block').classList.toggle('active', val === 'block');
+  document.getElementById('ip-policy-hint').textContent = val === 'allow'
+    ? 'Allow everyone except IPs in the block list.'
+    : 'Block everyone except IPs in the allow list.';
+}
+function addIPRule(list) {
+  const input = document.getElementById(`ip-${list}-input`);
+  const val = input.value.trim();
   if (!val) return;
-  if (!/^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/.test(val)) { toastMsg('Invalid IP or CIDR format.'); return; }
-  if (ipList.includes(val)) { toastMsg('Already in list.'); input.value=''; return; }
-  ipList.push(val); input.value=''; renderIPList();
+  if (!_ipRe.test(val)) { toastMsg('Invalid IP or CIDR format.'); return; }
+  if (ipPolicy[list].includes(val)) { toastMsg('Already in list.'); input.value = ''; return; }
+  ipPolicy[list].push(val); input.value = ''; renderIPList(list);
 }
-function removeIP(val) { ipList = ipList.filter(i=>i!==val); renderIPList(); }
-function renderIPList() {
-  const el = document.getElementById('ip-list');
-  if (!ipList.length) { el.innerHTML=`<div style="color:var(--text-muted);font-size:13px;padding:8px 4px;">No IPs added yet.</div>`; return; }
-  el.innerHTML = ipList.map(ip=>`<div class="ip-chip"><span>${ip}</span><button onclick="removeIP('${ip}')">×</button></div>`).join('');
+function removeIPRule(list, val) { ipPolicy[list] = ipPolicy[list].filter(i => i !== val); renderIPList(list); }
+function renderIPList(list) {
+  const el = document.getElementById(`ip-${list}-list`);
+  if (!ipPolicy[list].length) { el.innerHTML = `<div style="color:var(--text-muted);font-size:13px;padding:8px 4px;">No entries.</div>`; return; }
+  el.innerHTML = ipPolicy[list].map(ip => `<div class="ip-chip"><span>${ip}</span><button onclick="removeIPRule('${list}','${ip}')">×</button></div>`).join('');
 }
-function saveIP() { closeModal('ip-modal'); toastMsg(ipList.length ? `✓ ${ipList.length} IP rule(s) saved` : 'IP list cleared'); }
+function saveIP() {
+  const total = ipPolicy.allow.length + ipPolicy.block.length;
+  closeModal('ip-modal');
+  toastMsg(total ? `✓ IP policy saved (${total} rule${total > 1 ? 's' : ''})` : `✓ IP filter active — default ${ipPolicy.default}`);
+}
 
 let currentPinTab='password', pinValue='', _savedPasswordHash = null;
 

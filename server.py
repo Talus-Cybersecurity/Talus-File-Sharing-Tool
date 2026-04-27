@@ -1,4 +1,5 @@
 import asyncio
+import ipaddress
 import logging
 import os
 import base64
@@ -370,6 +371,7 @@ async def handle_login(ws: WebSocketServerProtocol, data: Dict[str, Any]) -> Non
                 "type": "login_ack",
                 "username": username,
                 "user_id": user_id,
+                "tag_id": db.get_tag_id(username),
                 "public_key_pem": user_public_key,
                 "encrypted_private_key": encrypted_private_key,
                 "pbkdf2_salt": pbkdf2_salt,
@@ -530,6 +532,16 @@ async def handle_create_session_key(ws: WebSocketServerProtocol, data: Dict[str,
         "client_id": client_id,
         "encrypted_session_key_b64": encode_b64(encrypted_key)
     })
+
+def _ip_matches(ip_str: str, rule: str) -> bool:
+    try:
+        ip = ipaddress.ip_address(ip_str)
+        if '/' in rule:
+            return ip in ipaddress.ip_network(rule, strict=False)
+        return ip == ipaddress.ip_address(rule)
+    except ValueError:
+        return False
+
 
 def _build_files_list(files_meta, file_name, file_size, file_type):
     if files_meta:
@@ -819,6 +831,27 @@ def validate_receiver_against_requirements(
                 if ws_ip != expected_value:
                     return False, "Access denied: your IP address is not permitted"
             continue
+
+        if field_name == "ip_policy" and isinstance(expected_value, dict):
+            default    = expected_value.get("default", "allow")
+            allow_list = expected_value.get("allow", [])
+            block_list = expected_value.get("block", [])
+            logging.info("IP policy check — ws_ip=%s default=%s allow=%s block=%s", ws_ip, default, allow_list, block_list)
+            if not ws_ip:
+                # Cannot determine receiver IP — fail safe
+                if default == "block":
+                    return False, "Access denied: your IP address could not be verified"
+                continue
+            # Block list has highest priority
+            if any(_ip_matches(ws_ip, rule) for rule in block_list):
+                return False, "Access denied: your IP address is blocked"
+            # Allow list overrides the default
+            if any(_ip_matches(ws_ip, rule) for rule in allow_list):
+                continue
+            # Apply default
+            if default == "block":
+                return False, "Access denied: your IP address is not permitted"
+            continue
  
         if field_name == "time_of_day_window" and isinstance(expected_value, dict):
             start_str = expected_value.get("start", "00:00")
@@ -988,6 +1021,7 @@ async def handle_request_file_access(ws: WebSocketServerProtocol, data: Dict[str
 
     # TALUS-232 - Get IP from websocket
     ws_ip = ws.remote_address[0] if ws.remote_address else None
+    logging.info("handle_request_file_access ws_ip=%s requirements=%s", ws_ip, list(requirements.keys()))
 
     # TALUS-231, 232, 234
     allowed, failed_field = validate_receiver_against_requirements(
