@@ -1,4 +1,4 @@
-# Talus File Sharing Tool
+# Talus File Sharing Tool 🏆 **1st Place** — [CSUF Computer Science Showcase](https://sites.google.com/fullerton.edu/cs-showcase-and-alumni/home)
 
 Talus is a **context-aware, policy-driven file sharing system** designed to bring enterprise-level security to everyday users. By combining modern encryption with dynamic access policies and machine learning–based threat detection, Talus ensures that shared files remain secure, private, and accessible only under approved conditions.
 
