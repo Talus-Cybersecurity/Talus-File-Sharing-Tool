@@ -1,10 +1,11 @@
-# Talus File Sharing Tool 🏆 **1st Place** — [CSUF Computer Science Showcase](https://sites.google.com/fullerton.edu/cs-showcase-and-alumni/home)
+# Talus File Sharing Tool 🏆 🏆 **1st Place** — [CSUF Computer Science Showcase](https://sites.google.com/fullerton.edu/cs-showcase-and-alumni/home)
+`Spring 2026` [View on GitHub](https://github.com/Talus-Cybersecurity/Talus-File-Sharing-Tool) 
 
-Talus is a **context-aware, policy-driven file sharing system** designed to bring enterprise-level security to everyday users. By combining modern encryption with dynamic access policies and machine learning–based threat detection, Talus ensures that shared files remain secure, private, and accessible only under approved conditions.
+Talus is a **context-aware, policy-driven file sharing system** designed to bring enterprise-level security to everyday users. By combining modern encryption with dynamic access policies and machine learning–based threat detection, Talus ensures that shared files remain secure, private, and accessible only under approved conditions.<br>
 
 ---
 
-# Team Members
+## Team Members
 
 | Name | Email |
 |-----|-----|
@@ -12,6 +13,8 @@ Talus is a **context-aware, policy-driven file sharing system** designed to brin
 | Joshua Pavon | jjpavon@csu.fullerton.edu |
 | Michelle Pham | mp28jam@csu.fullerton.edu |
 | Landon Patam | lcpatam@csu.fullerton.edu |
+
+<img width="712" height="501" alt="06BA612D-70EA-4361-9C2E-B2048D1803E7" src="https://github.com/user-attachments/assets/ae9db140-d0a1-4d30-9502-fb8cc2d25772" />
 
 ---
   
@@ -53,7 +56,7 @@ pip install pycryptodome argon2-cffi websockets psycopg2-binary python-dotenv
 *(Optional)* To visualize the database, download pgAdmin at https://www.pgadmin.org/download/ and log
 in using your `.env` credentials.
                                                                                                               
-# Project Description
+## Project Description
 
 Talus is a **secure file sharing platform** that bridges the gap between enterprise-grade security and consumer accessibility.
 
@@ -68,8 +71,6 @@ These conditions may include:
 
 Talus also utilizes a **zero-knowledge architecture**, ensuring that the server never has access to plaintext files or decryption keys.
 
-To further strengthen security, Talus integrates a **Random Forest machine learning model** that analyzes access logs in real time to detect suspicious behavior. The model currently achieves approximately **90% accuracy** in identifying anomalous access attempts and can automatically block potential threats.
-
 By combining:
 
 - **AES-256 symmetric encryption**
@@ -79,7 +80,18 @@ By combining:
 
 Talus provides a **secure yet user-friendly file sharing experience**.
 
----
+## Final Product UI
+
+<table>
+  <tr>
+    <th>Sender UI</th>
+    <th>Receiver UI</th>
+  </tr>
+  <tr>
+    <td><img width="628" alt="Sender UI" src="https://github.com/user-attachments/assets/80de13b1-8fba-4750-8f49-819205a8ac3f" /></td>
+    <td><img width="616" alt="Receiver UI" src="https://github.com/user-attachments/assets/2bcf5471-ca76-4f61-87b5-39fc2322bbb7" /></td>
+  </tr>
+</table>
 
 # Problem Statement
 
